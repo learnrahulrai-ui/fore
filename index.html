@@ -62,7 +62,10 @@
         const tc   = await page.getTextContent();
         parts.push(tc.items.map(x => x.str).join(' '));
       }
-      extractedText = parts.join('\n\n');
+      extractedText = parts.join('\n\n')
+        .replace(/[^\S\n]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars.';
       analyzeBtn.disabled = false;
     } catch (e) {
