@@ -62,11 +62,14 @@
         const tc   = await page.getTextContent();
         parts.push(tc.items.map(x => x.str).join(' '));
       }
+      const MAX_CHARS = 20000;
       extractedText = parts.join('\n\n')
         .replace(/[^\S\n]+/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
-      fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars.';
+      const truncated = extractedText.length > MAX_CHARS;
+      if (truncated) extractedText = extractedText.slice(0, MAX_CHARS);
+      fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars' + (truncated ? ' (truncated to fit model limits)' : '') + '.';
       analyzeBtn.disabled = false;
     } catch (e) {
       fileStatus.textContent = 'Error reading PDF: ' + e.message;
