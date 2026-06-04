@@ -28,33 +28,15 @@ export default {
     }
 
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 4096,
-          messages: [
-            { role: 'system', content: env.SYSTEM_PROMPT },
-            { role: 'user', content: body.text },
-          ],
-        }),
+      const response = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+        messages: [
+          { role: 'system', content: env.SYSTEM_PROMPT },
+          { role: 'user', content: body.text },
+        ],
+        max_tokens: 4096,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        const msg = data.error?.message || 'Groq API error';
-        return new Response(JSON.stringify({ error: msg }), {
-          status: res.status,
-          headers: { 'content-type': 'application/json', ...corsHeaders },
-        });
-      }
-
-      const text = data.choices?.[0]?.message?.content ?? '';
+      const text = response.response ?? '';
       return new Response(JSON.stringify({ result: text }), {
         headers: { 'content-type': 'application/json', ...corsHeaders },
       });
