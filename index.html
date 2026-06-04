@@ -10,13 +10,6 @@
 <hr>
 
 <p>
-  <label for="api-key">API Key:</label><br>
-  <input type="password" id="api-key" size="60" placeholder="sk-ant-...">
-  &nbsp;<input type="checkbox" id="remember" onchange="forgetKey(this)">
-  <label for="remember">remember in this browser</label>
-</p>
-
-<p>
   <label for="pdf-file">PDF file:</label><br>
   <input type="file" id="pdf-file" accept=".pdf">
 </p>
@@ -38,24 +31,13 @@
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const SYSTEM_PROMPT = `[PROMPT GOES HERE]`;
+  const WORKER_URL = 'https://firstfor.learn-rahul-rai.workers.dev';
 
-  const apiKeyEl   = document.getElementById('api-key');
-  const rememberEl = document.getElementById('remember');
   const fileEl     = document.getElementById('pdf-file');
   const fileStatus = document.getElementById('file-status');
   const analyzeBtn = document.getElementById('analyze-btn');
   const statusEl   = document.getElementById('status');
   const outputEl   = document.getElementById('output');
-
-  const saved = localStorage.getItem('api_key');
-  if (saved) { apiKeyEl.value = saved; rememberEl.checked = true; }
-
-  function forgetKey(cb) {
-    if (!cb.checked) localStorage.removeItem('api_key');
-  }
-
-  apiKeyEl.addEventListener('input', checkReady);
 
   let extractedText = '';
 
@@ -82,53 +64,36 @@
       }
       extractedText = parts.join('\n\n');
       fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars.';
-      checkReady();
+      analyzeBtn.disabled = false;
     } catch (e) {
       fileStatus.textContent = 'Error reading PDF: ' + e.message;
     }
   }
 
-  function checkReady() {
-    analyzeBtn.disabled = !(extractedText && apiKeyEl.value.trim());
-  }
-
   analyzeBtn.addEventListener('click', async () => {
-    const key = apiKeyEl.value.trim();
-    if (rememberEl.checked) localStorage.setItem('api_key', key);
-
     analyzeBtn.disabled = true;
     outputEl.textContent = '';
-    statusEl.textContent = 'Sending to API...';
+    statusEl.textContent = 'Analyzing...';
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch(WORKER_URL, {
         method: 'POST',
-        headers: {
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-opus-4-8',
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: extractedText }]
-        })
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: extractedText }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || res.statusText);
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || res.statusText);
       }
 
-      const data = await res.json();
-      outputEl.textContent = data.content?.[0]?.text ?? '(empty response)';
+      outputEl.textContent = data.result;
       statusEl.textContent = 'Done.';
     } catch (e) {
       statusEl.textContent = 'Error: ' + e.message;
     } finally {
-      checkReady();
+      analyzeBtn.disabled = false;
     }
   });
 </script>
