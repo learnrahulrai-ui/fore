@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial PDF Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: monospace;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: normal;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 620px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: #666;
+      display: block;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      color: #e0e0e0;
+      padding: 10px 12px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="password"]:focus {
+      border-color: #444;
+    }
+
+    .drop-zone {
+      border: 1px dashed #333;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      color: #555;
+      font-size: 0.85rem;
+    }
+
+    .drop-zone:hover, .drop-zone.over {
+      border-color: #666;
+      background: #141414;
+      color: #888;
+    }
+
+    .drop-zone.has-file {
+      border-color: #2a5a2a;
+      background: #111811;
+      color: #5a9;
+    }
+
+    input[type="file"] { display: none; }
+
+    #file-name {
+      font-size: 0.8rem;
+      color: #5a9;
+      margin-top: 6px;
+      min-height: 1rem;
+    }
+
+    button {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #222;
+      border-color: #555;
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    #status {
+      font-size: 0.8rem;
+      color: #666;
+      min-height: 1rem;
+    }
+
+    #status.error { color: #a55; }
+    #status.ok    { color: #5a9; }
+
+    #output {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      padding: 16px;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #bbb;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 480px;
+      overflow-y: auto;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>financial pdf analyzer</h1>
+
+  <div class="card">
+
+    <div>
+      <label>API Key</label>
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+    </div>
+
+    <div>
+      <label>PDF</label>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        drop pdf here or click to upload
+      </div>
+      <input type="file" id="file-input" accept=".pdf">
+      <div id="file-name"></div>
+    </div>
+
+    <button id="analyze-btn" disabled>analyze</button>
+
+    <div id="status"></div>
+    <pre id="output"></pre>
+
+  </div>
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const dropZone   = document.getElementById('drop-zone');
+    const fileInput  = document.getElementById('file-input');
+    const fileNameEl = document.getElementById('file-name');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const statusEl   = document.getElementById('status');
+    const outputEl   = document.getElementById('output');
+    const apiKeyEl   = document.getElementById('api-key');
+
+    let extractedText = '';
+
+    // Drag-and-drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      if (file.type !== 'application/pdf') {
+        setStatus('only pdf files are accepted', 'error');
+        return;
+      }
+      fileNameEl.textContent = file.name;
+      dropZone.classList.add('has-file');
+      setStatus('reading pdf…');
+      extractText(file);
+    }
+
+    async function extractText(file) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pages = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page  = await pdf.getPage(i);
+          const tc    = await page.getTextContent();
+          const text  = tc.items.map(item => item.str).join(' ');
+          pages.push(text);
+        }
+        extractedText = pages.join('\n\n');
+        setStatus(`pdf loaded — ${pdf.numPages} page(s), ~${extractedText.length.toLocaleString()} chars`, 'ok');
+        checkReady();
+      } catch (err) {
+        setStatus('failed to read pdf: ' + err.message, 'error');
+      }
+    }
+
+    apiKeyEl.addEventListener('input', checkReady);
+
+    function checkReady() {
+      analyzeBtn.disabled = !(extractedText && apiKeyEl.value.trim());
+    }
+
+    function setStatus(msg, type = '') {
+      statusEl.textContent = msg;
+      statusEl.className = type;
+    }
+
+    analyzeBtn.addEventListener('click', runAnalysis);
+
+    async function runAnalysis() {
+      analyzeBtn.disabled = true;
+      outputEl.style.display = 'none';
+      setStatus('analyzing…');
+
+      const apiKey = apiKeyEl.value.trim();
+
+      // PROMPT PLACEHOLDER — you will supply the proprietary prompt
+      const SYSTEM_PROMPT = `[YOUR PROPRIETARY PROMPT HERE]`;
+
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-opus-4-8',
+            max_tokens: 4096,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: 'user', content: extractedText }]
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error?.message || res.statusText);
+        }
+
+        const data = await res.json();
+        const answer = data.content?.[0]?.text ?? '(no response)';
+
+        outputEl.textContent = answer;
+        outputEl.style.display = 'block';
+        setStatus('done', 'ok');
+      } catch (err) {
+        setStatus('api error: ' + err.message, 'error');
+      } finally {
+        checkReady();
+      }
+    }
+  </script>
+</body>
+</html>
