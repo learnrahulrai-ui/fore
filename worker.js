@@ -3,7 +3,7 @@
 //
 // Flow:
 //   1. Extract company name from the PDF.
-//   2. Fan out ~6 targeted web searches (Brave API) about the company.
+//   2. Fan out ~6 targeted web searches (Serper API) about the company.
 //   3. Run every snippet through the GATE: the model proposes facts WITH a
 //      verbatim quote + source id; code verifies the quote is really in that
 //      snippet. Anything that fails is dropped. The model is never the source.
@@ -13,7 +13,7 @@
 //
 // Search is server-side (worker), so there is no CORS wall and the key stays
 // secret. The raw search is returned to the browser so the user can see and
-// verify what was looked up. If BRAVE_API_KEY is absent it falls back to
+// verify what was looked up. If SERPER_API_KEY is absent it falls back to
 // Wikipedia so the app still runs.
 // ---------------------------------------------------------------------------
 
@@ -181,7 +181,7 @@ async function fetchSourcesSerper(companyName, key) {
   return { sources, searchHits };
 }
 
-// Fallback when no Brave key is set.
+// Fallback when no Serper key is set.
 async function fetchSourcesWikipedia(companyName) {
   const sources = {};
   const UA = { 'User-Agent': 'fore-analyzer/1.0 (educational project)' };
