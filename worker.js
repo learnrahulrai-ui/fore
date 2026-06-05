@@ -99,7 +99,7 @@ export default {
 
       // --- Step 1: grounded research (cache-first; "fresh" bypasses the read) ---
       const skipCache = body.fresh === true;
-      let research, sources, droppedCount, searchHits, via, promoters = [], fromCache = false;
+      let research, sources, droppedCount, searchHits, via, promoters = [], independents = [], fromCache = false;
 
       if (!skipCache && cacheKey !== 'co_' && env.COMPANY_CACHE) {
         try {
@@ -107,6 +107,7 @@ export default {
           if (cached && cached.research !== undefined) {
             ({ research, sources, droppedCount, searchHits, via } = cached);
             promoters = cached.promoters || [];
+            independents = cached.independents || [];
             fromCache = true;
             via = 'cache';
           }
@@ -118,9 +119,10 @@ export default {
         research = r.research; sources = r.sources;
         droppedCount = r.dropped; searchHits = r.searchHits; via = r.via;
         promoters = r.promoters || [];
+        independents = r.independents || [];
         if (cacheKey !== 'co_' && env.COMPANY_CACHE) {
           await env.COMPANY_CACHE.put(cacheKey,
-            JSON.stringify({ research, sources, droppedCount, searchHits, via, promoters }),
+            JSON.stringify({ research, sources, droppedCount, searchHits, via, promoters, independents }),
             { expirationTtl: 2592000 });
         }
       }
@@ -129,6 +131,7 @@ export default {
       const diag = {
         company: companyName,
         promoters,
+        independents,
         search_via: via,
         has_serper_key: !!env.SERPER_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
@@ -199,12 +202,14 @@ const applyLayer  = base => `${base} ${clause(LAYERING_SITES)}`.trim();
 const applyBroker = base => `${base} ${clause(BROKER_SITES)}`.trim();
 const applyOpen   = base => `${base} ${EXCLUDE_SITES.map(d => `-site:${d}`).join(' ')}`.trim();
 
-// PHASE 1 — company-level: establish who the promoters are + base disclosures.
+// PHASE 1 — company-level: establish who the promoters + independent directors
+// are, plus base disclosures.
 function companyQueries(name) {
   const q = `"${name}"`;
   return [
     `${q} promoters directors annual report`,
     `${q} SAST shareholding pattern disclosure`,
+    `${q} "independent director" board composition corporate governance`,
   ].map(applyFilter);
 }
 
@@ -233,6 +238,7 @@ function disclosureQueries(company) {
     `${c} (warrants OR "convertible warrants" OR "warrant conversion" OR "subscription to warrants" OR forfeiture) (promoter OR allottee) filetype:pdf`,
     `${c} ("step down subsidiary" OR "wholly owned subsidiary" OR "subscription to equity" OR "investment in subsidiary" OR "infused") filetype:pdf`,
     `${c} ("unsecured loan" OR "inter-corporate deposit" OR "loan to subsidiary" OR "written off" OR "Section 186") (subsidiary OR "related party") filetype:pdf`,
+    `${c} subsidiary (equity OR "rights issue" OR preferential OR "fund raising" OR "capital raise") filetype:pdf`,
     `${c} (intimation OR announcement OR notice OR "regulation 30" OR disclosure) filetype:pdf`,
     `${c} (pledge OR pledged OR encumbrance OR "Regulation 31" OR "invocation of pledge" OR "release of pledge") filetype:pdf`,
   ].map(applyPdf);
@@ -271,6 +277,18 @@ function layeringQueries(company, promoters) {
   return qs;
 }
 
+// PHASE 2g — INDEPENDENT DIRECTORS: every other board they sit on (capture risk)
+// and the fees/commission they collect — across the company's group and beyond.
+function independentQueries(company, independents) {
+  const qs = [];
+  for (const d of independents) {
+    qs.push(applyLayer(`"${d}" director`));                                         // all their boards
+    qs.push(applyPdf(`"${d}" ("sitting fees" OR commission OR remuneration) filetype:pdf`)); // fees across cos
+  }
+  qs.push(applyPdf(`"${company}" ("independent director" OR "sitting fees" OR "commission to directors" OR "remuneration to directors") filetype:pdf`));
+  return qs;
+}
+
 // PHASE 2f — broker/securities domains that host PDFs (disclosure/AR only,
 // to avoid their research-report noise).
 function brokerQueries(company) {
@@ -293,25 +311,26 @@ async function serperSearch(query, key) {
   })).filter(r => r.url && r.text && r.text.length > 30);
 }
 
-// Pull up to 3 promoter/director person-names out of phase-1 snippets, so
-// phase 2 can search by person (where off-market sales / insider trades live).
-async function extractPromoterNames(env, sources) {
+// Pull key people out of phase-1 snippets so phase 2 can search by person:
+// promoters (where insider/off-market trades live) and independent directors
+// (whose other boards + fees reveal capture).
+async function extractKeyPeople(env, sources) {
   const ids = Object.keys(sources);
-  if (!ids.length) return [];
-  const blob = ids.map(id => sources[id].text).join('\n').slice(0, 4000);
+  if (!ids.length) return { promoters: [], independents: [] };
+  const blob = ids.map(id => sources[id].text).join('\n').slice(0, 5000);
   const out = await env.AI.run(FAST_MODEL, {
     messages: [
-      { role: 'system', content: 'From the text, list up to 3 individual people who are promoters, directors, or managing directors of the company. Return ONLY a JSON array of full names, e.g. ["Anil Aggarwal","Atul Aggarwal"]. If none are named, return [].' },
+      { role: 'system', content: 'From the text, identify this company\'s board members. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / managing / executive directors (max 3). independents = independent or non-executive directors (max 3). Full names only. Unknown list = [].' },
       { role: 'user', content: blob },
     ],
-    max_tokens: 100,
+    max_tokens: 200,
   });
+  const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 3) : [];
   try {
     const s = out.response ?? '';
-    const a = s.indexOf('['), b = s.lastIndexOf(']');
-    const arr = JSON.parse(s.slice(a, b + 1));
-    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()).slice(0, 3) : [];
-  } catch { return []; }
+    const obj = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
+    return { promoters: clean(obj.promoters), independents: clean(obj.independents) };
+  } catch { return { promoters: [], independents: [] }; }
 }
 
 async function fetchSourcesSerper(env, companyName, key) {
@@ -334,14 +353,15 @@ async function fetchSourcesSerper(env, companyName, key) {
     }
   };
 
-  // Phase 1: company-level -> find promoter names.
+  // Phase 1: company-level -> find promoters + independent directors.
   await runAll(companyQueries(companyName));
-  const promoters = await extractPromoterNames(env, sources);
-  console.log('PROMOTERS:', JSON.stringify(promoters));
+  const { promoters, independents } = await extractKeyPeople(env, sources);
+  console.log('PEOPLE:', JSON.stringify({ promoters, independents }));
 
-  // Phase 2: promoters + disclosures + buckets + IR + LAYERING + broker PDFs.
+  // Phase 2: promoters + independents + disclosures + buckets + IR + layering.
   await runAll([
     ...promoterQueries(companyName, promoters),
+    ...independentQueries(companyName, independents),
     ...disclosureQueries(companyName),
     ...bucketQueries(companyName),
     ...irQueries(companyName),
@@ -349,7 +369,7 @@ async function fetchSourcesSerper(env, companyName, key) {
     ...brokerQueries(companyName),
   ]);
 
-  return { sources, searchHits, promoters };
+  return { sources, searchHits, promoters, independents };
 }
 
 // Fallback when no Serper key is set.
@@ -380,16 +400,16 @@ async function fetchSourcesWikipedia(companyName) {
 
 async function fetchSources(env, companyName) {
   if (env.SERPER_API_KEY) {
-    const { sources, searchHits, promoters } = await fetchSourcesSerper(env, companyName, env.SERPER_API_KEY);
+    const { sources, searchHits, promoters, independents } = await fetchSourcesSerper(env, companyName, env.SERPER_API_KEY);
     // Key is set: trust Serper. If it returned nothing, the key is likely
     // invalid or out of quota — say so rather than masking it with Wikipedia.
     const via = Object.keys(sources).length > 0 ? 'serper' : 'serper-empty';
     console.log('SERPER hits:', searchHits.length, 'via:', via);
-    return { sources, searchHits, via, promoters };
+    return { sources, searchHits, via, promoters, independents };
   }
   // No key configured -> Wikipedia keeps the app usable.
   const sources = await fetchSourcesWikipedia(companyName);
-  return { sources, searchHits: [], via: 'no-key', promoters: [] };
+  return { sources, searchHits: [], via: 'no-key', promoters: [], independents: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -427,6 +447,9 @@ FIELDS:
 - layering_links (a named promoter/director linked to ANOTHER company or entity:
   other directorships, associate/holding/shell companies, related parties;
   one row each, format "<person> -> <other entity> (<relationship>)")
+- board_overlaps (an independent or non-executive director and the OTHER boards
+  they sit on — including related companies / subsidiaries — and any sitting fees /
+  commission / remuneration they collect; one row each)
 
 SOURCES:
 `;
@@ -487,17 +510,17 @@ function gate(facts, sources) {
 // Compose verified research from surviving facts.
 // ---------------------------------------------------------------------------
 async function groundedResearch(env, companyName) {
-  const { sources, searchHits, via, promoters } = await fetchSources(env, companyName);
+  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, companyName);
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
-    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via, promoters };
+    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via, promoters, independents };
 
   const { kept, dropped } = gate(await extractFacts(env, sources), sources);
   console.log('GATE kept:', kept.length, 'dropped:', dropped.length);
 
   if (kept.length === 0)
-    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits, via, promoters };
+    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits, via, promoters, independents };
 
   const byField = {};
   for (const f of kept) (byField[f.field] = byField[f.field] || []).push(f);
@@ -507,5 +530,5 @@ async function groundedResearch(env, companyName) {
     research += `\n## ${field}\n`;
     for (const f of byField[field]) research += `- ${f.value}  [${sources[f.source_id].url}]\n`;
   }
-  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits, via, promoters };
+  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits, via, promoters, independents };
 }
