@@ -232,6 +232,7 @@ function disclosureQueries(company) {
     `${c} (QIP OR FPO OR "preferential allotment" OR "rights issue" OR "rights entitlement") filetype:pdf`,
     `${c} (warrants OR "convertible warrants" OR "warrant conversion" OR "subscription to warrants" OR forfeiture) (promoter OR allottee) filetype:pdf`,
     `${c} ("step down subsidiary" OR "wholly owned subsidiary" OR "subscription to equity" OR "investment in subsidiary" OR "infused") filetype:pdf`,
+    `${c} ("unsecured loan" OR "inter-corporate deposit" OR "loan to subsidiary" OR "written off" OR "Section 186") (subsidiary OR "related party") filetype:pdf`,
     `${c} (intimation OR announcement OR notice OR "regulation 30" OR disclosure) filetype:pdf`,
     `${c} (pledge OR pledged OR encumbrance OR "Regulation 31" OR "invocation of pledge" OR "release of pledge") filetype:pdf`,
   ].map(applyPdf);
@@ -408,6 +409,9 @@ FIELDS:
 - subsidiary_funding (parent subscribing to / investing in / infusing money into a
   subsidiary or step-down subsidiary — especially one tied to promoter family
   (sons/daughters/relatives); one row each, include the entity and amount)
+- loans_to_related (unsecured loans / inter-corporate deposits / advances from the
+  company to a subsidiary or related party, and any later default / write-off /
+  provision for doubtful; one row each, include amount, entity, and whether written off)
 - warrant_events (preferential warrants to promoters/allottees, conversion price
   vs market price, warrant conversion or forfeiture, % upfront; one row each)
 - distress_signals (debt default, fraud/investigation, downgrade, insolvency; one row each)
