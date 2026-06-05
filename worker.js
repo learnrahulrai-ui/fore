@@ -115,7 +115,7 @@ export default {
       }
 
       if (research === undefined) {
-        const r = await groundedResearch(env, companyName);
+        const r = await groundedResearch(env, companyName, pdfText);
         research = r.research; sources = r.sources;
         droppedCount = r.dropped; searchHits = r.searchHits; via = r.via;
         promoters = r.promoters || [];
@@ -312,6 +312,26 @@ async function serperSearch(query, key) {
   })).filter(r => r.url && r.text && r.text.length > 30);
 }
 
+// Authoritative board roster comes from the UPLOADED filing, not noisy web
+// snippets — the document literally lists its own directors + shareholdings.
+// Excludes the company secretary, auditors and ceremonial/ministerial mentions.
+async function extractBoardFromPdf(env, pdfText) {
+  if (!pdfText) return { promoters: [], independents: [] };
+  const out = await env.AI.run(MAIN_MODEL, {
+    messages: [
+      { role: 'system', content: 'From this company filing, list the people on its BOARD OF DIRECTORS. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / executive / managing directors (max 4). independents = independent or non-executive directors (max 4). Full personal names only. Do NOT include the Company Secretary, Compliance Officer, auditors, or any government minister mentioned ceremonially. Unknown list = [].' },
+      { role: 'user', content: pdfText.slice(0, 12000) },
+    ],
+    max_tokens: 250,
+  });
+  const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 4) : [];
+  try {
+    const s = out.response ?? '';
+    const obj = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
+    return { promoters: clean(obj.promoters), independents: clean(obj.independents) };
+  } catch { return { promoters: [], independents: [] }; }
+}
+
 // Pull key people out of phase-1 snippets so phase 2 can search by person:
 // promoters (where insider/off-market trades live) and independent directors
 // (whose other boards + fees reveal capture).
@@ -334,7 +354,7 @@ async function extractKeyPeople(env, sources) {
   } catch { return { promoters: [], independents: [] }; }
 }
 
-async function fetchSourcesSerper(env, companyName, key) {
+async function fetchSourcesSerper(env, companyName, key, board) {
   const sources = {};
   const searchHits = [];
   const seen = new Set();   // dedupe identical URLs across the ~26 queries
@@ -354,9 +374,16 @@ async function fetchSourcesSerper(env, companyName, key) {
     }
   };
 
-  // Phase 1: company-level -> find promoters + independent directors.
+  // Phase 1: company-level disclosures.
   await runAll(companyQueries(companyName));
-  const { promoters, independents } = await extractKeyPeople(env, sources);
+
+  // Names: prefer the board parsed from the uploaded filing; only fall back to
+  // noisy web-snippet extraction if the document gave us nothing.
+  let promoters = (board && board.promoters) || [];
+  let independents = (board && board.independents) || [];
+  if (!promoters.length && !independents.length) {
+    ({ promoters, independents } = await extractKeyPeople(env, sources));
+  }
   console.log('PEOPLE:', JSON.stringify({ promoters, independents }));
 
   // Phase 2: promoters + independents + disclosures + buckets + IR + layering.
@@ -399,9 +426,9 @@ async function fetchSourcesWikipedia(companyName) {
   return sources;
 }
 
-async function fetchSources(env, companyName) {
+async function fetchSources(env, companyName, board) {
   if (env.SERPER_API_KEY) {
-    const { sources, searchHits, promoters, independents } = await fetchSourcesSerper(env, companyName, env.SERPER_API_KEY);
+    const { sources, searchHits, promoters, independents } = await fetchSourcesSerper(env, companyName, env.SERPER_API_KEY, board);
     // Key is set: trust Serper. If it returned nothing, the key is likely
     // invalid or out of quota — say so rather than masking it with Wikipedia.
     const via = Object.keys(sources).length > 0 ? 'serper' : 'serper-empty';
@@ -513,8 +540,10 @@ function gate(facts, sources) {
 // ---------------------------------------------------------------------------
 // Compose verified research from surviving facts.
 // ---------------------------------------------------------------------------
-async function groundedResearch(env, companyName) {
-  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, companyName);
+async function groundedResearch(env, companyName, pdfText) {
+  // Authoritative board comes from the uploaded filing, not noisy web snippets.
+  const board = await extractBoardFromPdf(env, pdfText);
+  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, companyName, board);
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
