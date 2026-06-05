@@ -18,6 +18,8 @@
 
 <p>
   <button id="analyze-btn" disabled>Analyze</button>
+  &nbsp;<input type="checkbox" id="fresh">
+  <label for="fresh">force refresh (ignore cache)</label>
 </p>
 
 <p id="status"></p>
@@ -61,7 +63,9 @@
   const outAnalysis = document.getElementById('out-analysis');
   const outReport   = document.getElementById('out-report');
 
+  const freshEl = document.getElementById('fresh');
   let extractedText = '';
+  let headText = '';
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -98,6 +102,7 @@
       const full = parts.join('\n\n').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       const start = Math.floor(full.length * 0.30);
       extractedText = full.slice(start, start + MAX_CHARS);
+      headText = full.slice(0, 2000); // cover page, for company-name detection
       fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars.';
       analyzeBtn.disabled = false;
     } catch (e) {
@@ -114,7 +119,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: extractedText }),
+        body: JSON.stringify({ text: extractedText, head: headText, fresh: freshEl.checked }),
       });
 
       const data = await res.json();

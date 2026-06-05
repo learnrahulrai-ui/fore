@@ -54,15 +54,18 @@ export default {
 
     try {
       const pdfText = body.text;
-
-      const companyName = await extractCompanyName(env, pdfText);
+      // Name comes from the document head (cover page), sent separately by the
+      // browser — the analysis chunk skips the first 30% and would miss it.
+      const headText = body.head || pdfText.slice(0, 2000);
+      const companyName = await extractCompanyName(env, headText);
       const cacheKey = 'co_' + companyName.toLowerCase()
         .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 80);
 
-      // --- Step 1: grounded research (cache-first) ---
+      // --- Step 1: grounded research (cache-first; "fresh" bypasses the read) ---
+      const skipCache = body.fresh === true;
       let research, sources, droppedCount, searchHits, fromCache = false;
 
-      if (cacheKey !== 'co_' && env.COMPANY_CACHE) {
+      if (!skipCache && cacheKey !== 'co_' && env.COMPANY_CACHE) {
         try {
           const cached = await env.COMPANY_CACHE.get(cacheKey, 'json');
           if (cached && cached.research !== undefined) {
@@ -114,11 +117,11 @@ async function runModel(env, model, system, user, maxTokens) {
   return (out.response ?? '').trim();
 }
 
-async function extractCompanyName(env, pdfText) {
-  const out = await env.AI.run(FAST_MODEL, {
+async function extractCompanyName(env, headText) {
+  const out = await env.AI.run(MAIN_MODEL, {
     messages: [
-      { role: 'system', content: 'Extract only the primary company name from this financial document. Reply with just the name, nothing else.' },
-      { role: 'user', content: pdfText.slice(0, 4000) },
+      { role: 'system', content: 'You are given the opening text of a financial document (cover/first page). Return the issuing company\'s name exactly as printed, including "Limited"/"Ltd" if shown (e.g. "Asian Paints Limited"). Reply with ONLY the name — no quotes, no extra words.' },
+      { role: 'user', content: headText.slice(0, 4000) },
     ],
     max_tokens: 30,
   });
