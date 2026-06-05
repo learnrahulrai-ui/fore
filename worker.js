@@ -22,7 +22,7 @@ const ALLOWED_ORIGIN = 'https://learnrahulrai-ui.github.io';
 const FAST_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const MAIN_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
-const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
+const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
 // Results from these domains are tagged "primary" so they stand out.
 const PRIMARY_DOMAINS = new Set([
@@ -41,8 +41,6 @@ function json(obj, status = 200) {
     status, headers: { 'content-type': 'application/json', ...CORS },
   });
 }
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export default {
   async fetch(request, env) {
@@ -150,35 +148,35 @@ function makeQueries(name) {
   ];
 }
 
-async function braveSearch(query, key) {
-  const url = BRAVE_ENDPOINT + '?count=3&q=' + encodeURIComponent(query);
-  const res = await fetch(url, {
-    headers: { 'Accept': 'application/json', 'X-Subscription-Token': key },
+async function serperSearch(query, key) {
+  const res = await fetch(SERPER_ENDPOINT, {
+    method: 'POST',
+    headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ q: query, num: 5 }),
   });
   if (!res.ok) return [];
   const data = await res.json();
-  const results = data?.web?.results ?? [];
-  return results.map(r => {
-    const extra = Array.isArray(r.extra_snippets) ? r.extra_snippets.join(' ') : '';
-    const text = [r.description, extra].filter(Boolean).join(' ').replace(/<\/?[^>]+>/g, '');
-    return { url: r.url, title: (r.title || '').replace(/<\/?[^>]+>/g, ''), text };
-  }).filter(r => r.text && r.text.length > 40);
+  const results = data?.organic ?? [];
+  return results.map(r => ({
+    url: r.link, title: r.title || '', text: r.snippet || '',
+  })).filter(r => r.url && r.text && r.text.length > 30);
 }
 
-async function fetchSourcesBrave(companyName, key) {
+async function fetchSourcesSerper(companyName, key) {
   const sources = {};
   const searchHits = [];
   const queries = makeQueries(companyName);
-  for (let i = 0; i < queries.length; i++) {
-    try {
-      const hits = await braveSearch(queries[i], key);
-      for (const h of hits) {
-        const id = 's' + Object.keys(sources).length;
-        sources[id] = { id, url: h.url, trust: trustOf(h.url), text: h.text };
-        searchHits.push({ query: queries[i], title: h.title, url: h.url, snippet: h.text });
-      }
-    } catch { /* skip a failed query, keep going */ }
-    if (i < queries.length - 1) await sleep(1100); // free tier = 1 req/sec
+  // Serper has no 1-req/sec cap, so fire all queries at once.
+  const perQuery = await Promise.all(queries.map(async q => {
+    try { return { q, hits: await serperSearch(q, key) }; }
+    catch { return { q, hits: [] }; }
+  }));
+  for (const { q, hits } of perQuery) {
+    for (const h of hits) {
+      const id = 's' + Object.keys(sources).length;
+      sources[id] = { id, url: h.url, trust: trustOf(h.url), text: h.text };
+      searchHits.push({ query: q, title: h.title, url: h.url, snippet: h.text });
+    }
   }
   return { sources, searchHits };
 }
@@ -210,8 +208,8 @@ async function fetchSourcesWikipedia(companyName) {
 }
 
 async function fetchSources(env, companyName) {
-  if (env.BRAVE_API_KEY) {
-    const { sources, searchHits } = await fetchSourcesBrave(companyName, env.BRAVE_API_KEY);
+  if (env.SERPER_API_KEY) {
+    const { sources, searchHits } = await fetchSourcesSerper(companyName, env.SERPER_API_KEY);
     if (Object.keys(sources).length > 0) return { sources, searchHits };
   }
   const sources = await fetchSourcesWikipedia(companyName);
