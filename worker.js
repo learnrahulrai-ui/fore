@@ -167,13 +167,12 @@ function trustOf(url) {
   return 'news';
 }
 
-// Site filters appended to every query.
+// Site filters appended to every query. A whitelist already limits to trusted
+// sites, so excludes are only needed when searching the open web.
 function siteClause() {
-  const exc = EXCLUDE_SITES.map(d => `-site:${d}`).join(' ');
-  const inc = INCLUDE_SITES.length
-    ? ' (' + INCLUDE_SITES.map(d => `site:${d}`).join(' OR ') + ')'
-    : '';
-  return (inc + ' ' + exc).trim();
+  if (INCLUDE_SITES.length)
+    return '(' + INCLUDE_SITES.map(d => `site:${d}`).join(' OR ') + ')';
+  return EXCLUDE_SITES.map(d => `-site:${d}`).join(' ');
 }
 const applyFilter = base => `${base} ${siteClause()}`.trim();
 
@@ -186,19 +185,29 @@ function companyQueries(name) {
   ].map(applyFilter);
 }
 
-// PHASE 2 — promoter-level: the tricks are filed under PEOPLE's names.
-// Hunts the actual SAST/PIT disclosure PDFs on the exchange archives.
+// PHASE 2a — promoter-level: the tricks are filed under PEOPLE's names.
 function promoterQueries(company, promoters) {
   const c = `"${company}"`;
   const qs = [];
   for (const p of promoters) {
     qs.push(`"${p}" ${c} insider trading off market sale acquisition disposal`);
-    qs.push(`"${p}" ${c} pledge warrants preferential allotment QIP FPO`);
+    qs.push(`"${p}" ${c} pledge warrants preferential allotment`);
   }
-  // Company-level disclosure-PDF hunts (work even if no promoter name was found).
-  qs.push(`${c} promoter insider trading SAST disclosure filetype:pdf`);
-  qs.push(`${c} QIP FPO warrants preferential allotment equity dilution`);
   return qs.map(applyFilter);
+}
+
+// PHASE 2b — company-level, PDF-ONLY disclosure hunts. These are the documents
+// that record the actual moves: bulk/block/inter-se/off-market transfers,
+// repeated OFS offloading, and the pre-IPO PE/VC entry + promoter offer-for-sale
+// buried in the DRHP/RHP. (Snippets find the PDF; deep facts may sit inside it.)
+function disclosureQueries(company) {
+  const c = `"${company}"`;
+  return [
+    `${c} (bulk deal OR block deal OR "inter-se transfer" OR "off market" OR SAST) filetype:pdf`,
+    `${c} (OFS OR "offer for sale") (promoter OR "selling shareholder") filetype:pdf`,
+    `${c} (DRHP OR RHP OR prospectus) ("private equity" OR "venture capital" OR "selling shareholders" OR "pre-IPO" OR "offer for sale") filetype:pdf`,
+    `${c} (QIP OR FPO OR warrants OR "preferential allotment") filetype:pdf`,
+  ].map(applyFilter);
 }
 
 async function serperSearch(query, key) {
@@ -258,8 +267,11 @@ async function fetchSourcesSerper(env, companyName, key) {
   const promoters = await extractPromoterNames(env, sources);
   console.log('PROMOTERS:', JSON.stringify(promoters));
 
-  // Phase 2: promoter-level + disclosure-PDF hunts.
-  await runAll(promoterQueries(companyName, promoters));
+  // Phase 2: promoter-level searches + company-level PDF-only disclosure hunts.
+  await runAll([
+    ...promoterQueries(companyName, promoters),
+    ...disclosureQueries(companyName),
+  ]);
 
   return { sources, searchHits, promoters };
 }
@@ -322,6 +334,10 @@ FIELDS:
 - regulatory_actions (value format: "<what happened> | legal_status: alleged|order|conviction")
 - capital_events (QIP, FPO, preferential allotment, warrants, dilution; one row each)
 - distress_signals (debt default, pledge, fraud/investigation; one row each)
+- ownership_changes (bulk deal, block deal, inter-se transfer, off-market sale,
+  OFS / offer-for-sale, promoter offload; one row each, include who and how much if stated)
+- pre_ipo_moves (private equity / venture capital entry or exit around the IPO,
+  selling shareholders in the IPO offer-for-sale, pre-IPO stake changes; one row each)
 
 SOURCES:
 `;
