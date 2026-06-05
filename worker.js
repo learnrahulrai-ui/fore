@@ -239,6 +239,7 @@ function disclosureQueries(company) {
     `${c} ("step down subsidiary" OR "wholly owned subsidiary" OR "subscription to equity" OR "investment in subsidiary" OR "infused") filetype:pdf`,
     `${c} ("unsecured loan" OR "inter-corporate deposit" OR "loan to subsidiary" OR "written off" OR "Section 186") (subsidiary OR "related party") filetype:pdf`,
     `${c} subsidiary (equity OR "rights issue" OR preferential OR "fund raising" OR "capital raise") filetype:pdf`,
+    `${c} ("overseas subsidiary" OR "foreign subsidiary" OR "incorporated outside India" OR "overseas acquisition") filetype:pdf`,
     `${c} (intimation OR announcement OR notice OR "regulation 30" OR disclosure) filetype:pdf`,
     `${c} (pledge OR pledged OR encumbrance OR "Regulation 31" OR "invocation of pledge" OR "release of pledge") filetype:pdf`,
   ].map(applyPdf);
@@ -450,6 +451,9 @@ FIELDS:
 - board_overlaps (an independent or non-executive director and the OTHER boards
   they sit on — including related companies / subsidiaries — and any sitting fees /
   commission / remuneration they collect; one row each)
+- overseas_subsidiaries (foreign/overseas subsidiary incorporated or acquired, an
+  overseas acquisition — especially of a loss-making/near-bankrupt target — and who
+  leads it (promoter family placed abroad); one row each, include entity and country)
 
 SOURCES:
 `;
