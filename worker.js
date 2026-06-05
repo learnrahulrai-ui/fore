@@ -317,6 +317,7 @@ async function extractPromoterNames(env, sources) {
 async function fetchSourcesSerper(env, companyName, key) {
   const sources = {};
   const searchHits = [];
+  const seen = new Set();   // dedupe identical URLs across the ~26 queries
   const runAll = async (queries) => {
     const perQuery = await Promise.all(queries.map(async q => {
       try { return { q, hits: await serperSearch(q, key) }; }
@@ -324,7 +325,9 @@ async function fetchSourcesSerper(env, companyName, key) {
     }));
     for (const { q, hits } of perQuery) {
       for (const h of hits) {
-        const id = 's' + Object.keys(sources).length;
+        if (seen.has(h.url)) continue;       // first query to find a URL wins
+        seen.add(h.url);
+        const id = 's' + seen.size;
         sources[id] = { id, url: h.url, trust: trustOf(h.url), text: h.text };
         searchHits.push({ query: q, title: h.title, url: h.url, snippet: h.text });
       }
@@ -429,9 +432,10 @@ SOURCES:
 `;
 
 async function extractFacts(env, sources) {
-  const ids = Object.keys(sources);
+  // Cap how much goes to the model so a big query set can't overflow context.
+  const ids = Object.keys(sources).slice(0, 80);
   if (ids.length === 0) return [];
-  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 2000)}`).join('\n\n');
+  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 1200)}`).join('\n\n');
   const out = await env.AI.run(MAIN_MODEL, {
     messages: [
       { role: 'system', content: 'You extract only facts present verbatim in the provided sources. You never invent.' },
