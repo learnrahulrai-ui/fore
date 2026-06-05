@@ -26,7 +26,9 @@
   <hr>
   <p id="company-line"></p>
 
-  <h3>Company Research</h3>
+  <h3>Verified Company Facts</h3>
+  <p id="grounding-note" style="color:#555;font-size:0.85em;"></p>
+  <p id="sources-line" style="font-size:0.85em;"></p>
   <pre id="out-research" style="white-space:pre-wrap;word-break:break-word;max-width:900px;"></pre>
 
   <h3>PDF Analysis</h3>
@@ -49,6 +51,8 @@
   const statusEl    = document.getElementById('status');
   const resultsEl   = document.getElementById('results');
   const companyLine = document.getElementById('company-line');
+  const groundNote  = document.getElementById('grounding-note');
+  const sourcesLine = document.getElementById('sources-line');
   const outResearch = document.getElementById('out-research');
   const outAnalysis = document.getElementById('out-analysis');
   const outReport   = document.getElementById('out-report');
@@ -87,7 +91,7 @@
   analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true;
     resultsEl.style.display = 'none';
-    statusEl.textContent = 'Running 3-step analysis... (may take 30-60 seconds)';
+    statusEl.textContent = 'Retrieving sources, checking facts, analyzing... (may take up to ~2 minutes)';
 
     try {
       const res = await fetch(WORKER_URL, {
@@ -100,7 +104,21 @@
 
       if (!res.ok || data.error) throw new Error(data.error || res.statusText);
 
-      companyLine.textContent = 'Company: ' + data.company + (data.cached ? ' (research from cache)' : ' (research freshly generated)');
+      companyLine.textContent = 'Company: ' + data.company + (data.cached ? ' (from cache)' : ' (freshly checked)');
+
+      const dropped = data.dropped_count || 0;
+      groundNote.textContent = dropped > 0
+        ? dropped + ' proposed claim(s) were dropped because the quote could not be found in any source. (High = retrieval is weak for this company.)'
+        : 'Every fact below was checked against its source quote.';
+
+      const srcs = data.sources || [];
+      if (srcs.length) {
+        sourcesLine.innerHTML = 'Sources checked: ' +
+          srcs.map(s => '<a href="' + s.url + '" target="_blank">' + s.trust + '</a>').join(', ');
+      } else {
+        sourcesLine.textContent = 'Sources checked: none could be retrieved.';
+      }
+
       outResearch.textContent = data.research;
       outAnalysis.textContent = data.analysis;
       outReport.textContent   = data.report;
