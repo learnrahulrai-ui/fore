@@ -22,9 +22,19 @@
 
 <p id="status"></p>
 
-<hr>
+<div id="results" style="display:none">
+  <hr>
+  <p id="company-line"></p>
 
-<pre id="output" style="white-space:pre-wrap;word-break:break-word;max-width:900px;"></pre>
+  <h3>Company Research</h3>
+  <pre id="out-research" style="white-space:pre-wrap;word-break:break-word;max-width:900px;"></pre>
+
+  <h3>PDF Analysis</h3>
+  <pre id="out-analysis" style="white-space:pre-wrap;word-break:break-word;max-width:900px;"></pre>
+
+  <h3>Final Report</h3>
+  <pre id="out-report" style="white-space:pre-wrap;word-break:break-word;max-width:900px;"></pre>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -33,21 +43,22 @@
 
   const WORKER_URL = 'https://firstfor.learn-rahul-rai.workers.dev';
 
-  const fileEl     = document.getElementById('pdf-file');
-  const fileStatus = document.getElementById('file-status');
-  const analyzeBtn = document.getElementById('analyze-btn');
-  const statusEl   = document.getElementById('status');
-  const outputEl   = document.getElementById('output');
+  const fileEl      = document.getElementById('pdf-file');
+  const fileStatus  = document.getElementById('file-status');
+  const analyzeBtn  = document.getElementById('analyze-btn');
+  const statusEl    = document.getElementById('status');
+  const resultsEl   = document.getElementById('results');
+  const companyLine = document.getElementById('company-line');
+  const outResearch = document.getElementById('out-research');
+  const outAnalysis = document.getElementById('out-analysis');
+  const outReport   = document.getElementById('out-report');
 
   let extractedText = '';
 
   fileEl.addEventListener('change', () => {
     const file = fileEl.files[0];
     if (!file) return;
-    if (file.type !== 'application/pdf') {
-      fileStatus.textContent = 'Error: not a PDF.';
-      return;
-    }
+    if (file.type !== 'application/pdf') { fileStatus.textContent = 'Error: not a PDF.'; return; }
     fileStatus.textContent = 'Reading...';
     extractText(file);
   });
@@ -63,13 +74,10 @@
         parts.push(tc.items.map(x => x.str).join(' '));
       }
       const MAX_CHARS = 20000;
-      const full = parts.join('\n\n')
-        .replace(/[^\S\n]+/g, ' ')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
+      const full = parts.join('\n\n').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       const start = Math.floor(full.length * 0.30);
       extractedText = full.slice(start, start + MAX_CHARS);
-      fileStatus.textContent = pdf.numPages + ' page(s) loaded, using chars ' + start.toLocaleString() + '–' + (start + extractedText.length).toLocaleString() + ' of ' + full.length.toLocaleString() + '.';
+      fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars.';
       analyzeBtn.disabled = false;
     } catch (e) {
       fileStatus.textContent = 'Error reading PDF: ' + e.message;
@@ -78,8 +86,8 @@
 
   analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true;
-    outputEl.textContent = '';
-    statusEl.textContent = 'Analyzing...';
+    resultsEl.style.display = 'none';
+    statusEl.textContent = 'Running 3-step analysis... (may take 30-60 seconds)';
 
     try {
       const res = await fetch(WORKER_URL, {
@@ -90,11 +98,13 @@
 
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-        throw new Error(data.error || res.statusText);
-      }
+      if (!res.ok || data.error) throw new Error(data.error || res.statusText);
 
-      outputEl.textContent = data.result;
+      companyLine.textContent = 'Company: ' + data.company + (data.cached ? ' (research from cache)' : ' (research freshly generated)');
+      outResearch.textContent = data.research;
+      outAnalysis.textContent = data.analysis;
+      outReport.textContent   = data.report;
+      resultsEl.style.display = 'block';
       statusEl.textContent = 'Done.';
     } catch (e) {
       statusEl.textContent = 'Error: ' + e.message;
