@@ -29,7 +29,7 @@
   <p id="company-line"></p>
   <p id="diag-line" style="color:#999;font-size:0.75em;font-family:monospace;"></p>
 
-  <h3>Web Search</h3>
+  <h3>Documents Found</h3>
   <div id="out-search" style="font-size:0.85em;max-width:900px;"></div>
 
   <h3>Verified Company Facts</h3>
@@ -145,15 +145,11 @@
 
       const hits = data.search || [];
       if (hits.length) {
-        const byQuery = {};
-        hits.forEach(h => { (byQuery[h.query] = byQuery[h.query] || []).push(h); });
-        outSearch.innerHTML = Object.keys(byQuery).map(q =>
-          '<p style="margin:0.6em 0 0.2em;"><b>' + esc(q) + '</b></p>' +
-          byQuery[q].map(h =>
-            '<div style="margin:0.2em 0 0.4em 1em;">' +
-            '<a href="' + safeUrl(h.url) + '" target="_blank" rel="noopener">' + esc(h.title || h.url) + '</a><br>' +
-            '<span style="color:#555;">' + esc(h.snippet) + '</span></div>'
-          ).join('')
+        // Flat list of documents found — no query strings exposed.
+        outSearch.innerHTML = hits.map(h =>
+          '<div style="margin:0.2em 0 0.5em;">' +
+          '<a href="' + safeUrl(h.url) + '" target="_blank" rel="noopener">' + esc(h.title || h.url) + '</a><br>' +
+          '<span style="color:#555;">' + esc(h.snippet) + '</span></div>'
         ).join('');
       } else {
         const via = (data.diag && data.diag.search_via) || '';

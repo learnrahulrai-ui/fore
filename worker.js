@@ -146,9 +146,15 @@ export default {
       // --- Step 3: condense ---
       const report = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_3, analysis, 1024);
 
+      // Strip the raw query strings — never expose the trick queries to the
+      // browser. Only the found documents (title/url/snippet) go to the user.
+      const publicSearch = (searchHits || []).map(h => ({
+        title: h.title, url: h.url, snippet: h.snippet,
+      }));
+
       return json({
         company: companyName, cached: fromCache, research, sources,
-        dropped_count: droppedCount, search: searchHits || [], analysis, report,
+        dropped_count: droppedCount, search: publicSearch, analysis, report,
         diag,
       });
     } catch (e) {
