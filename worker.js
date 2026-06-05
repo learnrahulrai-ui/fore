@@ -56,6 +56,12 @@ const EXCLUDE_SITES = [
   'facebook.com', 'linkedin.com', 'zoominfo.com', 'twitter.com', 'x.com',
   'instagram.com', 'youtube.com', 'pinterest.com', 'tracxn.com',
 ];
+// LAYERING: map a promoter's NAME -> every entity they run. zaubacorp/tofler
+// list a director's companies; indiankanoon catches the name in litigation.
+const LAYERING_SITES = ['zaubacorp.com', 'tofler.in', 'indiankanoon.org'];
+// Broker/securities domains that also host PDFs. NOTE: mostly research/ratings
+// (which you don't want), so only queried with disclosure/AR terms.
+const BROKER_SITES = ['hdfcsec.com', 'icicidirect.com', 'motilaloswal.com'];
 
 const CORS = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -186,6 +192,8 @@ const applyFilter = base => `${base} ${clause(GENERAL_SITES)}`.trim();
 const applyPdf    = base => `${base} ${clause(PDF_SITES)}`.trim();
 const applyCredit = base => `${base} ${clause(CREDIT_SITES)}`.trim();
 const applyBucket = base => `${base} ${clause(BUCKET_SITES)}`.trim();
+const applyLayer  = base => `${base} ${clause(LAYERING_SITES)}`.trim();
+const applyBroker = base => `${base} ${clause(BROKER_SITES)}`.trim();
 const applyOpen   = base => `${base} ${EXCLUDE_SITES.map(d => `-site:${d}`).join(' ')}`.trim();
 
 // PHASE 1 — company-level: establish who the promoters are + base disclosures.
@@ -246,6 +254,23 @@ function irQueries(company) {
   ].map(applyOpen);
 }
 
+// PHASE 2e — LAYERING: track each promoter NAME across the other entities they
+// run (zaubacorp/tofler director listings), plus the company's own shell/
+// related-party disclosures. First hop only — see the deep-layering note.
+function layeringQueries(company, promoters) {
+  const qs = promoters.map(p => applyLayer(`"${p}" director`));
+  qs.push(applyPdf(`"${company}" (shell OR "related party" OR associate OR "inter-se") filetype:pdf`));
+  return qs;
+}
+
+// PHASE 2f — broker/securities domains that host PDFs (disclosure/AR only,
+// to avoid their research-report noise).
+function brokerQueries(company) {
+  return [
+    applyBroker(`"${company}" (annual report OR transcript OR shareholding OR disclosure) filetype:pdf`),
+  ];
+}
+
 async function serperSearch(query, key) {
   const res = await fetch(SERPER_ENDPOINT, {
     method: 'POST',
@@ -303,12 +328,14 @@ async function fetchSourcesSerper(env, companyName, key) {
   const promoters = await extractPromoterNames(env, sources);
   console.log('PROMOTERS:', JSON.stringify(promoters));
 
-  // Phase 2: promoter searches + disclosure PDFs + cloud buckets + IR docs.
+  // Phase 2: promoters + disclosures + buckets + IR + LAYERING + broker PDFs.
   await runAll([
     ...promoterQueries(companyName, promoters),
     ...disclosureQueries(companyName),
     ...bucketQueries(companyName),
     ...irQueries(companyName),
+    ...layeringQueries(companyName, promoters),
+    ...brokerQueries(companyName),
   ]);
 
   return { sources, searchHits, promoters };
@@ -376,6 +403,9 @@ FIELDS:
   OFS / offer-for-sale, promoter offload; one row each, include who and how much if stated)
 - pre_ipo_moves (private equity / venture capital entry or exit around the IPO,
   selling shareholders in the IPO offer-for-sale, pre-IPO stake changes; one row each)
+- layering_links (a named promoter/director linked to ANOTHER company or entity:
+  other directorships, associate/holding/shell companies, related parties;
+  one row each, format "<person> -> <other entity> (<relationship>)")
 
 SOURCES:
 `;
