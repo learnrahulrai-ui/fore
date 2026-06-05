@@ -46,6 +46,16 @@ const PDF_SITES = [
 // Credit / debt sources (rating agencies) — for default / pledge / downgrade.
 // (My read of "banks sites" — tell me if you meant literal bank websites.)
 const CREDIT_SITES = ['icra.in', 'crisil.com', 'careratings.com'];
+// Cloud storage / CDN where firms park annual reports, transcripts and decks
+// for years — forgotten but still public and indexed by Google.
+const BUCKET_SITES = [
+  'amazonaws.com', 'blob.core.windows.net', 'storage.googleapis.com', 'cloudfront.net',
+];
+// Junk excluded from the one OPEN-web query (the company's own IR page, domain unknown).
+const EXCLUDE_SITES = [
+  'facebook.com', 'linkedin.com', 'zoominfo.com', 'twitter.com', 'x.com',
+  'instagram.com', 'youtube.com', 'pinterest.com', 'tracxn.com',
+];
 
 const CORS = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -175,6 +185,8 @@ const clause = sites => '(' + sites.map(d => `site:${d}`).join(' OR ') + ')';
 const applyFilter = base => `${base} ${clause(GENERAL_SITES)}`.trim();
 const applyPdf    = base => `${base} ${clause(PDF_SITES)}`.trim();
 const applyCredit = base => `${base} ${clause(CREDIT_SITES)}`.trim();
+const applyBucket = base => `${base} ${clause(BUCKET_SITES)}`.trim();
+const applyOpen   = base => `${base} ${EXCLUDE_SITES.map(d => `-site:${d}`).join(' ')}`.trim();
 
 // PHASE 1 — company-level: establish who the promoters are + base disclosures.
 function companyQueries(name) {
@@ -213,6 +225,25 @@ function disclosureQueries(company) {
     `${c} (default OR pledge OR "wilful defaulter" OR downgrade OR insolvency)`,
   ].map(applyCredit);
   return [...pdf, ...credit];
+}
+
+// PHASE 2c — forgotten cloud buckets (S3/Azure/GCP/CloudFront): annual reports,
+// transcripts and decks in PDF, plus shareholding/deal data in Excel.
+function bucketQueries(company) {
+  const c = `"${company}"`;
+  return [
+    `${c} (annual report OR transcript OR concall OR "investor presentation") filetype:pdf`,
+    `${c} (shareholding OR "bulk deal" OR financials) (filetype:xlsx OR filetype:xls)`,
+  ].map(applyBucket);
+}
+
+// PHASE 2d — the company's OWN investor-relations docs, wherever hosted
+// (open web; domain is unknown up front, so only junk is excluded).
+function irQueries(company) {
+  const c = `"${company}"`;
+  return [
+    `${c} (investor relations OR "earnings call transcript" OR concall OR "investor presentation") filetype:pdf`,
+  ].map(applyOpen);
 }
 
 async function serperSearch(query, key) {
@@ -272,10 +303,12 @@ async function fetchSourcesSerper(env, companyName, key) {
   const promoters = await extractPromoterNames(env, sources);
   console.log('PROMOTERS:', JSON.stringify(promoters));
 
-  // Phase 2: promoter-level searches + company-level PDF-only disclosure hunts.
+  // Phase 2: promoter searches + disclosure PDFs + cloud buckets + IR docs.
   await runAll([
     ...promoterQueries(companyName, promoters),
     ...disclosureQueries(companyName),
+    ...bucketQueries(companyName),
+    ...irQueries(companyName),
   ]);
 
   return { sources, searchHits, promoters };
