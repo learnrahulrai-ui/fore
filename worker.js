@@ -30,6 +30,16 @@ const PRIMARY_DOMAINS = new Set([
   'indiankanoon.org', 'nclt.gov.in', 'rbi.org.in',
 ]);
 
+// --- Search site controls (edit these to tune what gets searched) ---------
+// Always blocked: social/profile/aggregator noise.
+const EXCLUDE_SITES = [
+  'facebook.com', 'linkedin.com', 'zoominfo.com', 'twitter.com', 'x.com',
+  'instagram.com', 'youtube.com', 'pinterest.com', 'tracxn.com',
+];
+// If non-empty, every query is restricted to ONLY these sites.
+// Leave empty to search the open web (minus EXCLUDE_SITES).
+const INCLUDE_SITES = [];
+
 const CORS = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -150,9 +160,19 @@ function trustOf(url) {
   return 'news';
 }
 
+// Site filters appended to every query.
+function siteClause() {
+  const exc = EXCLUDE_SITES.map(d => `-site:${d}`).join(' ');
+  const inc = INCLUDE_SITES.length
+    ? ' (' + INCLUDE_SITES.map(d => `site:${d}`).join(' OR ') + ')'
+    : '';
+  return (inc + ' ' + exc).trim();
+}
+
 // The targeted query fan-out — one per "trick" you care about.
 function makeQueries(name) {
   const q = `"${name}"`;
+  const filter = siteClause();
   return [
     `${q} promoters directors`,
     `${q} SEBI penalty order action`,
@@ -160,7 +180,7 @@ function makeQueries(name) {
     `${q} subsidiaries related party transactions`,
     `${q} debt default fraud investigation`,
     `${q} promoter pledge warrants`,
-  ];
+  ].map(base => `${base} ${filter}`.trim());
 }
 
 async function serperSearch(query, key) {
@@ -288,12 +308,18 @@ function parseFacts(raw) {
 // ---------------------------------------------------------------------------
 const norm = t => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
+// Match-normalization: drop punctuation/ellipses so a snippet quote can match
+// even if the model didn't copy "..." and commas character-for-character.
+const matchNorm = t => String(t || '')
+  .toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
 function verifyFact(f, sources) {
   if (norm(f.value) === 'not found') return false;
   const src = sources[f.source_id];
   if (!src) return false;
-  if (String(f.quote).trim().split(/\s+/).length < 8) return false;
-  if (!norm(src.text).includes(norm(f.quote))) return false;
+  const q = matchNorm(f.quote);
+  if (q.split(' ').filter(Boolean).length < 6) return false;   // real anchor
+  if (!matchNorm(src.text).includes(q)) return false;          // invented/altered
   return true;
 }
 
