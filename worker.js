@@ -51,10 +51,13 @@ const CREDIT_SITES = ['icra.in', 'crisil.com', 'careratings.com'];
 const BUCKET_SITES = [
   'amazonaws.com', 'blob.core.windows.net', 'storage.googleapis.com', 'cloudfront.net',
 ];
-// Junk excluded from the one OPEN-web query (the company's own IR page, domain unknown).
+// Junk excluded from the one OPEN-web query (the company's own IR page, domain
+// unknown). Social + "fancy" aggregator/AI sites you don't want. (Kept to ~14
+// so the query stays under Google's term limit.)
 const EXCLUDE_SITES = [
-  'facebook.com', 'linkedin.com', 'zoominfo.com', 'twitter.com', 'x.com',
-  'instagram.com', 'youtube.com', 'pinterest.com', 'tracxn.com',
+  'facebook.com', 'linkedin.com', 'instagram.com', 'twitter.com', 'x.com', 'youtube.com',
+  'marketscreener.com', 'stockinsights.ai', 'simplywall.st', 'investing.com',
+  'tradingview.com', 'marketbeat.com', 'stockanalysis.com', 'zoominfo.com',
 ];
 // LAYERING: map a promoter's NAME -> every entity they run. zaubacorp/tofler
 // list a director's companies; indiankanoon catches the name in litigation.
@@ -227,6 +230,7 @@ function disclosureQueries(company) {
     `${c} (OFS OR "offer for sale") (promoter OR "selling shareholder") filetype:pdf`,
     `${c} (DRHP OR RHP OR prospectus) ("private equity" OR "venture capital" OR "selling shareholders" OR "pre-IPO") filetype:pdf`,
     `${c} (QIP OR FPO OR warrants OR "preferential allotment") filetype:pdf`,
+    `${c} (intimation OR announcement OR notice OR "regulation 30" OR disclosure) filetype:pdf`,
   ].map(applyPdf);
   // Debt / pledge / default via the rating agencies ("banks/credit" sources).
   const credit = [
