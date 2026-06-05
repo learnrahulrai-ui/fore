@@ -229,7 +229,8 @@ function disclosureQueries(company) {
     `${c} (bulk deal OR block deal OR "inter-se transfer" OR "off market" OR SAST) filetype:pdf`,
     `${c} (OFS OR "offer for sale") (promoter OR "selling shareholder") filetype:pdf`,
     `${c} (DRHP OR RHP OR prospectus) ("private equity" OR "venture capital" OR "selling shareholders" OR "pre-IPO") filetype:pdf`,
-    `${c} (QIP OR FPO OR warrants OR "preferential allotment") filetype:pdf`,
+    `${c} (QIP OR FPO OR "qualified institutional placement" OR "preferential allotment") filetype:pdf`,
+    `${c} (warrants OR "convertible warrants" OR "warrant conversion" OR "subscription to warrants" OR forfeiture) (promoter OR allottee) filetype:pdf`,
     `${c} (intimation OR announcement OR notice OR "regulation 30" OR disclosure) filetype:pdf`,
     `${c} (pledge OR pledged OR encumbrance OR "Regulation 31" OR "invocation of pledge" OR "release of pledge") filetype:pdf`,
   ].map(applyPdf);
@@ -402,7 +403,9 @@ FIELDS:
 - promoter_names (one row per person)
 - related_companies (subsidiaries, parents, associates; one row each)
 - regulatory_actions (value format: "<what happened> | legal_status: alleged|order|conviction")
-- capital_events (QIP, FPO, preferential allotment, warrants, dilution; one row each)
+- capital_events (QIP, FPO, preferential allotment of shares, dilution; one row each)
+- warrant_events (preferential warrants to promoters/allottees, conversion price
+  vs market price, warrant conversion or forfeiture, % upfront; one row each)
 - distress_signals (debt default, fraud/investigation, downgrade, insolvency; one row each)
 - pledge_events (promoter shares pledged/encumbered, pledge creation/release/
   invocation, % of holding pledged; one row each, include who and how much if stated)
