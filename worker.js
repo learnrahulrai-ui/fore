@@ -75,16 +75,27 @@ export default {
         } catch { /* old/stale entry -> miss */ }
       }
 
+      let via = fromCache ? 'cache' : 'unknown';
       if (research === undefined) {
         const r = await groundedResearch(env, companyName);
         research = r.research; sources = r.sources;
-        droppedCount = r.dropped; searchHits = r.searchHits;
+        droppedCount = r.dropped; searchHits = r.searchHits; via = r.via;
         if (cacheKey !== 'co_' && env.COMPANY_CACHE) {
           await env.COMPANY_CACHE.put(cacheKey,
-            JSON.stringify({ research, sources, droppedCount, searchHits }),
+            JSON.stringify({ research, sources, droppedCount, searchHits, via }),
             { expirationTtl: 2592000 });
         }
       }
+
+      // Diagnostics — booleans only, never the secret values themselves.
+      const diag = {
+        company: companyName,
+        search_via: via,
+        has_serper_key: !!env.SERPER_API_KEY,
+        has_prompt_2: !!env.SYSTEM_PROMPT_2,
+        has_prompt_3: !!env.SYSTEM_PROMPT_3,
+      };
+      console.log('DIAG', JSON.stringify(diag));
 
       // --- Step 2: analyze the PDF with verified facts as context ---
       const analysis = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_2,
@@ -96,6 +107,7 @@ export default {
       return json({
         company: companyName, cached: fromCache, research, sources,
         dropped_count: droppedCount, search: searchHits || [], analysis, report,
+        diag,
       });
     } catch (e) {
       return json({ error: e.message || String(e) }, 500);
@@ -213,10 +225,15 @@ async function fetchSourcesWikipedia(companyName) {
 async function fetchSources(env, companyName) {
   if (env.SERPER_API_KEY) {
     const { sources, searchHits } = await fetchSourcesSerper(companyName, env.SERPER_API_KEY);
-    if (Object.keys(sources).length > 0) return { sources, searchHits };
+    // Key is set: trust Serper. If it returned nothing, the key is likely
+    // invalid or out of quota — say so rather than masking it with Wikipedia.
+    const via = Object.keys(sources).length > 0 ? 'serper' : 'serper-empty';
+    console.log('SERPER hits:', searchHits.length, 'via:', via);
+    return { sources, searchHits, via };
   }
+  // No key configured -> Wikipedia keeps the app usable.
   const sources = await fetchSourcesWikipedia(companyName);
-  return { sources, searchHits: [] };
+  return { sources, searchHits: [], via: 'no-key' };
 }
 
 // ---------------------------------------------------------------------------
@@ -290,16 +307,17 @@ function gate(facts, sources) {
 // Compose verified research from surviving facts.
 // ---------------------------------------------------------------------------
 async function groundedResearch(env, companyName) {
-  const { sources, searchHits } = await fetchSources(env, companyName);
+  const { sources, searchHits, via } = await fetchSources(env, companyName);
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
-    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits };
+    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via };
 
   const { kept, dropped } = gate(await extractFacts(env, sources), sources);
+  console.log('GATE kept:', kept.length, 'dropped:', dropped.length);
 
   if (kept.length === 0)
-    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits };
+    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits, via };
 
   const byField = {};
   for (const f of kept) (byField[f.field] = byField[f.field] || []).push(f);
@@ -309,5 +327,5 @@ async function groundedResearch(env, companyName) {
     research += `\n## ${field}\n`;
     for (const f of byField[field]) research += `- ${f.value}  [${sources[f.source_id].url}]\n`;
   }
-  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits };
+  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits, via };
 }

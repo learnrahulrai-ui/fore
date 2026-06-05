@@ -27,6 +27,7 @@
 <div id="results" style="display:none">
   <hr>
   <p id="company-line"></p>
+  <p id="diag-line" style="color:#999;font-size:0.75em;font-family:monospace;"></p>
 
   <h3>Web Search</h3>
   <div id="out-search" style="font-size:0.85em;max-width:900px;"></div>
@@ -56,6 +57,7 @@
   const statusEl    = document.getElementById('status');
   const resultsEl   = document.getElementById('results');
   const companyLine = document.getElementById('company-line');
+  const diagLine    = document.getElementById('diag-line');
   const outSearch   = document.getElementById('out-search');
   const groundNote  = document.getElementById('grounding-note');
   const sourcesLine = document.getElementById('sources-line');
@@ -154,7 +156,17 @@
           ).join('')
         ).join('');
       } else {
-        outSearch.textContent = 'No web search ran (no Serper key set, or served from cache).';
+        const via = (data.diag && data.diag.search_via) || '';
+        const msg = {
+          'no-key': 'No web search ran: the worker has no SERPER_API_KEY secret set.',
+          'serper-empty': 'Serper key IS set but returned no results — the key is likely invalid or out of quota.',
+          'cache': 'Served from cache (no fresh search). Tick "force refresh" to re-search.',
+        }[via] || 'No web search ran.';
+        outSearch.textContent = msg;
+      }
+
+      if (data.diag) {
+        diagLine.textContent = 'diag: ' + JSON.stringify(data.diag);
       }
 
       outResearch.textContent = data.research;
