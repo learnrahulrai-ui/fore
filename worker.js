@@ -38,7 +38,11 @@ const EXCLUDE_SITES = [
 ];
 // If non-empty, every query is restricted to ONLY these sites.
 // Leave empty to search the open web (minus EXCLUDE_SITES).
-const INCLUDE_SITES = [];
+// Official + primary sources only — where promoter disclosures actually live.
+const INCLUDE_SITES = [
+  'bseindia.com', 'nseindia.com', 'nsearchives.nseindia.com',
+  'sebi.gov.in', 'nclt.gov.in', 'mca.gov.in', 'indiankanoon.org',
+];
 
 const CORS = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -73,26 +77,28 @@ export default {
 
       // --- Step 1: grounded research (cache-first; "fresh" bypasses the read) ---
       const skipCache = body.fresh === true;
-      let research, sources, droppedCount, searchHits, fromCache = false;
+      let research, sources, droppedCount, searchHits, via, promoters = [], fromCache = false;
 
       if (!skipCache && cacheKey !== 'co_' && env.COMPANY_CACHE) {
         try {
           const cached = await env.COMPANY_CACHE.get(cacheKey, 'json');
           if (cached && cached.research !== undefined) {
-            ({ research, sources, droppedCount, searchHits } = cached);
+            ({ research, sources, droppedCount, searchHits, via } = cached);
+            promoters = cached.promoters || [];
             fromCache = true;
+            via = 'cache';
           }
         } catch { /* old/stale entry -> miss */ }
       }
 
-      let via = fromCache ? 'cache' : 'unknown';
       if (research === undefined) {
         const r = await groundedResearch(env, companyName);
         research = r.research; sources = r.sources;
         droppedCount = r.dropped; searchHits = r.searchHits; via = r.via;
+        promoters = r.promoters || [];
         if (cacheKey !== 'co_' && env.COMPANY_CACHE) {
           await env.COMPANY_CACHE.put(cacheKey,
-            JSON.stringify({ research, sources, droppedCount, searchHits, via }),
+            JSON.stringify({ research, sources, droppedCount, searchHits, via, promoters }),
             { expirationTtl: 2592000 });
         }
       }
@@ -100,6 +106,7 @@ export default {
       // Diagnostics — booleans only, never the secret values themselves.
       const diag = {
         company: companyName,
+        promoters,
         search_via: via,
         has_serper_key: !!env.SERPER_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
@@ -168,19 +175,30 @@ function siteClause() {
     : '';
   return (inc + ' ' + exc).trim();
 }
+const applyFilter = base => `${base} ${siteClause()}`.trim();
 
-// The targeted query fan-out — one per "trick" you care about.
-function makeQueries(name) {
+// PHASE 1 — company-level: establish who the promoters are + base disclosures.
+function companyQueries(name) {
   const q = `"${name}"`;
-  const filter = siteClause();
   return [
-    `${q} promoters directors`,
-    `${q} SEBI penalty order action`,
-    `${q} QIP FPO preferential allotment equity dilution`,
-    `${q} subsidiaries related party transactions`,
-    `${q} debt default fraud investigation`,
-    `${q} promoter pledge warrants`,
-  ].map(base => `${base} ${filter}`.trim());
+    `${q} promoters directors annual report`,
+    `${q} SAST shareholding pattern disclosure`,
+  ].map(applyFilter);
+}
+
+// PHASE 2 — promoter-level: the tricks are filed under PEOPLE's names.
+// Hunts the actual SAST/PIT disclosure PDFs on the exchange archives.
+function promoterQueries(company, promoters) {
+  const c = `"${company}"`;
+  const qs = [];
+  for (const p of promoters) {
+    qs.push(`"${p}" ${c} insider trading off market sale acquisition disposal`);
+    qs.push(`"${p}" ${c} pledge warrants preferential allotment QIP FPO`);
+  }
+  // Company-level disclosure-PDF hunts (work even if no promoter name was found).
+  qs.push(`${c} promoter insider trading SAST disclosure filetype:pdf`);
+  qs.push(`${c} QIP FPO warrants preferential allotment equity dilution`);
+  return qs.map(applyFilter);
 }
 
 async function serperSearch(query, key) {
@@ -197,23 +215,53 @@ async function serperSearch(query, key) {
   })).filter(r => r.url && r.text && r.text.length > 30);
 }
 
-async function fetchSourcesSerper(companyName, key) {
+// Pull up to 3 promoter/director person-names out of phase-1 snippets, so
+// phase 2 can search by person (where off-market sales / insider trades live).
+async function extractPromoterNames(env, sources) {
+  const ids = Object.keys(sources);
+  if (!ids.length) return [];
+  const blob = ids.map(id => sources[id].text).join('\n').slice(0, 4000);
+  const out = await env.AI.run(FAST_MODEL, {
+    messages: [
+      { role: 'system', content: 'From the text, list up to 3 individual people who are promoters, directors, or managing directors of the company. Return ONLY a JSON array of full names, e.g. ["Anil Aggarwal","Atul Aggarwal"]. If none are named, return [].' },
+      { role: 'user', content: blob },
+    ],
+    max_tokens: 100,
+  });
+  try {
+    const s = out.response ?? '';
+    const a = s.indexOf('['), b = s.lastIndexOf(']');
+    const arr = JSON.parse(s.slice(a, b + 1));
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()).slice(0, 3) : [];
+  } catch { return []; }
+}
+
+async function fetchSourcesSerper(env, companyName, key) {
   const sources = {};
   const searchHits = [];
-  const queries = makeQueries(companyName);
-  // Serper has no 1-req/sec cap, so fire all queries at once.
-  const perQuery = await Promise.all(queries.map(async q => {
-    try { return { q, hits: await serperSearch(q, key) }; }
-    catch { return { q, hits: [] }; }
-  }));
-  for (const { q, hits } of perQuery) {
-    for (const h of hits) {
-      const id = 's' + Object.keys(sources).length;
-      sources[id] = { id, url: h.url, trust: trustOf(h.url), text: h.text };
-      searchHits.push({ query: q, title: h.title, url: h.url, snippet: h.text });
+  const runAll = async (queries) => {
+    const perQuery = await Promise.all(queries.map(async q => {
+      try { return { q, hits: await serperSearch(q, key) }; }
+      catch { return { q, hits: [] }; }
+    }));
+    for (const { q, hits } of perQuery) {
+      for (const h of hits) {
+        const id = 's' + Object.keys(sources).length;
+        sources[id] = { id, url: h.url, trust: trustOf(h.url), text: h.text };
+        searchHits.push({ query: q, title: h.title, url: h.url, snippet: h.text });
+      }
     }
-  }
-  return { sources, searchHits };
+  };
+
+  // Phase 1: company-level -> find promoter names.
+  await runAll(companyQueries(companyName));
+  const promoters = await extractPromoterNames(env, sources);
+  console.log('PROMOTERS:', JSON.stringify(promoters));
+
+  // Phase 2: promoter-level + disclosure-PDF hunts.
+  await runAll(promoterQueries(companyName, promoters));
+
+  return { sources, searchHits, promoters };
 }
 
 // Fallback when no Serper key is set.
@@ -244,16 +292,16 @@ async function fetchSourcesWikipedia(companyName) {
 
 async function fetchSources(env, companyName) {
   if (env.SERPER_API_KEY) {
-    const { sources, searchHits } = await fetchSourcesSerper(companyName, env.SERPER_API_KEY);
+    const { sources, searchHits, promoters } = await fetchSourcesSerper(env, companyName, env.SERPER_API_KEY);
     // Key is set: trust Serper. If it returned nothing, the key is likely
     // invalid or out of quota — say so rather than masking it with Wikipedia.
     const via = Object.keys(sources).length > 0 ? 'serper' : 'serper-empty';
     console.log('SERPER hits:', searchHits.length, 'via:', via);
-    return { sources, searchHits, via };
+    return { sources, searchHits, via, promoters };
   }
   // No key configured -> Wikipedia keeps the app usable.
   const sources = await fetchSourcesWikipedia(companyName);
-  return { sources, searchHits: [], via: 'no-key' };
+  return { sources, searchHits: [], via: 'no-key', promoters: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -333,17 +381,17 @@ function gate(facts, sources) {
 // Compose verified research from surviving facts.
 // ---------------------------------------------------------------------------
 async function groundedResearch(env, companyName) {
-  const { sources, searchHits, via } = await fetchSources(env, companyName);
+  const { sources, searchHits, via, promoters } = await fetchSources(env, companyName);
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
-    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via };
+    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via, promoters };
 
   const { kept, dropped } = gate(await extractFacts(env, sources), sources);
   console.log('GATE kept:', kept.length, 'dropped:', dropped.length);
 
   if (kept.length === 0)
-    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits, via };
+    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits, via, promoters };
 
   const byField = {};
   for (const f of kept) (byField[f.field] = byField[f.field] || []).push(f);
@@ -353,5 +401,5 @@ async function groundedResearch(env, companyName) {
     research += `\n## ${field}\n`;
     for (const f of byField[field]) research += `- ${f.value}  [${sources[f.source_id].url}]\n`;
   }
-  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits, via };
+  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits, via, promoters };
 }
