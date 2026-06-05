@@ -231,6 +231,7 @@ function disclosureQueries(company) {
     `${c} (DRHP OR RHP OR prospectus) ("private equity" OR "venture capital" OR "selling shareholders" OR "pre-IPO") filetype:pdf`,
     `${c} (QIP OR FPO OR warrants OR "preferential allotment") filetype:pdf`,
     `${c} (intimation OR announcement OR notice OR "regulation 30" OR disclosure) filetype:pdf`,
+    `${c} (pledge OR pledged OR encumbrance OR "Regulation 31" OR "invocation of pledge" OR "release of pledge") filetype:pdf`,
   ].map(applyPdf);
   // Debt / pledge / default via the rating agencies ("banks/credit" sources).
   const credit = [
@@ -402,7 +403,9 @@ FIELDS:
 - related_companies (subsidiaries, parents, associates; one row each)
 - regulatory_actions (value format: "<what happened> | legal_status: alleged|order|conviction")
 - capital_events (QIP, FPO, preferential allotment, warrants, dilution; one row each)
-- distress_signals (debt default, pledge, fraud/investigation; one row each)
+- distress_signals (debt default, fraud/investigation, downgrade, insolvency; one row each)
+- pledge_events (promoter shares pledged/encumbered, pledge creation/release/
+  invocation, % of holding pledged; one row each, include who and how much if stated)
 - ownership_changes (bulk deal, block deal, inter-se transfer, off-market sale,
   OFS / offer-for-sale, promoter offload; one row each, include who and how much if stated)
 - pre_ipo_moves (private equity / venture capital entry or exit around the IPO,
