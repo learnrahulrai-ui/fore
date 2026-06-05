@@ -15,3 +15,13 @@ binding = "AI"
 [[kv_namespaces]]
 binding = "COMPANY_CACHE"
 id = "009a5e0753044f7c8d5d1ade4135eba2"
+
+# Workers Logs (so the DIAG/console.log lines show in Observability -> Logs).
+# Defined here so it survives every deploy.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
