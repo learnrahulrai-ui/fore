@@ -1,0 +1,17 @@
+# Tells Cloudflare how to deploy this Worker on every push (Workers Builds).
+# IMPORTANT: this file is in a PUBLIC repo, so it must contain NO secrets.
+# Your Serper key and SYSTEM_PROMPT_* stay as dashboard Secrets — they persist
+# across deploys and are never committed here.
+
+name = "firstfor"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Workers AI  -> env.AI
+[ai]
+binding = "AI"
+
+# KV cache    -> env.COMPANY_CACHE
+[[kv_namespaces]]
+binding = "COMPANY_CACHE"
+id = "009a5e0753044f7c8d5d1ade4135eba2"
