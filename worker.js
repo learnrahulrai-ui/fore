@@ -19,8 +19,18 @@
 
 const ALLOWED_ORIGIN = 'https://learnrahulrai-ui.github.io';
 
+// Cloudflare Workers AI models.
+// FAST_MODEL (8B) is used for all extraction tasks to stay within the free
+// 10,000 neuron/day limit.  MAIN_MODEL (70B) would burn ~8,000 neurons on a
+// single analysis call — the whole daily budget for one request.
 const FAST_MODEL = '@cf/meta/llama-3.1-8b-instruct';
-const MAIN_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const MAIN_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';  // only used when CF AI is the sole option
+
+// Groq free tier: llama-3.3-70b-versatile, 100k tokens/day, no credit card.
+// When GROQ_API_KEY is set as a CF Secret, analysis + report run here instead
+// of burning the CF neuron budget.
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
@@ -135,6 +145,7 @@ export default {
         search_via: via,
         drop_reasons: dropReasons || {},
         has_serper_key: !!env.SERPER_API_KEY,
+        has_groq_key: !!env.GROQ_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
         has_prompt_3: !!env.SYSTEM_PROMPT_3,
       };
@@ -167,7 +178,34 @@ export default {
 // ---------------------------------------------------------------------------
 // Model helpers
 // ---------------------------------------------------------------------------
-async function runModel(env, model, system, user, maxTokens) {
+
+// Groq path: 70B quality, generous free tier (100k tokens/day).
+// Caps user content at 18,000 chars to stay under the 6,000-token/min rate
+// limit (≈4,500 tokens input + system + output ≈ 6,000 total).
+async function runGroq(key, system, user, maxTokens) {
+  const res = await fetch(GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: system || '' },
+        { role: 'user', content: user.slice(0, 18000) },
+      ],
+      max_tokens: maxTokens,
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error('Groq: ' + (e.error?.message || res.statusText));
+  }
+  const d = await res.json();
+  return (d.choices?.[0]?.message?.content ?? '').trim();
+}
+
+// Cloudflare Workers AI path (cheap 8B).  Used for extraction tasks always,
+// and as fallback for analysis/report when no Groq key is set.
+async function runCF(env, model, system, user, maxTokens) {
   const out = await env.AI.run(model, {
     messages: [
       { role: 'system', content: system || '' },
@@ -178,11 +216,18 @@ async function runModel(env, model, system, user, maxTokens) {
   return (out.response ?? '').trim();
 }
 
+// For analysis + report: prefer Groq (saves CF neurons, better model).
+// _cfModel arg retained so callers don't need to change.
+async function runModel(env, _cfModel, system, user, maxTokens) {
+  if (env.GROQ_API_KEY) return runGroq(env.GROQ_API_KEY, system, user, maxTokens);
+  return runCF(env, FAST_MODEL, system, user, maxTokens);
+}
+
 async function extractCompanyName(env, headText) {
-  const out = await env.AI.run(MAIN_MODEL, {
+  const out = await env.AI.run(FAST_MODEL, {
     messages: [
       { role: 'system', content: 'You are given the opening text of a financial document (cover/first page). Return the issuing company\'s name exactly as printed, including "Limited"/"Ltd" if shown (e.g. "Asian Paints Limited"). Reply with ONLY the name — no quotes, no extra words.' },
-      { role: 'user', content: headText.slice(0, 4000) },
+      { role: 'user', content: headText.slice(0, 1500) },
     ],
     max_tokens: 30,
   });
@@ -324,12 +369,12 @@ async function serperSearch(query, key) {
 // Excludes the company secretary, auditors and ceremonial/ministerial mentions.
 async function extractBoardFromPdf(env, pdfText) {
   if (!pdfText) return { promoters: [], independents: [] };
-  const out = await env.AI.run(MAIN_MODEL, {
+  const out = await env.AI.run(FAST_MODEL, {
     messages: [
       { role: 'system', content: 'From this company filing, list the people on its BOARD OF DIRECTORS. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / executive / managing directors (max 4). independents = independent or non-executive directors (max 4). Full personal names only. Do NOT include the Company Secretary, Compliance Officer, auditors, or any government minister mentioned ceremonially. Unknown list = [].' },
-      { role: 'user', content: pdfText.slice(0, 12000) },
+      { role: 'user', content: pdfText.slice(0, 6000) },
     ],
-    max_tokens: 250,
+    max_tokens: 200,
   });
   const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 4) : [];
   try {
@@ -345,7 +390,7 @@ async function extractBoardFromPdf(env, pdfText) {
 async function extractKeyPeople(env, sources) {
   const ids = Object.keys(sources);
   if (!ids.length) return { promoters: [], independents: [] };
-  const blob = ids.map(id => sources[id].text).join('\n').slice(0, 5000);
+  const blob = ids.map(id => sources[id].text).join('\n').slice(0, 3000);
   const out = await env.AI.run(FAST_MODEL, {
     messages: [
       { role: 'system', content: 'From the text, identify this company\'s board members. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / managing / executive directors (max 3). independents = independent or non-executive directors (max 3). Full names only. Unknown list = [].' },
@@ -493,16 +538,17 @@ SOURCES:
 `;
 
 async function extractFacts(env, sources) {
-  // Cap how much goes to the model so a big query set can't overflow context.
-  const ids = Object.keys(sources).slice(0, 80);
+  // 25 sources × 500 chars ≈ 12,500 chars ≈ 3,125 tokens.
+  // With FAST_MODEL output budget, total ≈ 4,125 tokens × 0.2 ≈ 825 CF neurons.
+  const ids = Object.keys(sources).slice(0, 25);
   if (ids.length === 0) return [];
-  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 1200)}`).join('\n\n');
-  const out = await env.AI.run(MAIN_MODEL, {
+  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 500)}`).join('\n\n');
+  const out = await env.AI.run(FAST_MODEL, {
     messages: [
       { role: 'system', content: 'You extract only facts present verbatim in the provided sources. You never invent.' },
       { role: 'user', content: EXTRACT_PROMPT + blob },
     ],
-    max_tokens: 2000,
+    max_tokens: 1200,
   });
   return parseFacts(out.response ?? '');
 }
