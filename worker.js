@@ -30,19 +30,22 @@ const PRIMARY_DOMAINS = new Set([
   'indiankanoon.org', 'nclt.gov.in', 'rbi.org.in',
 ]);
 
-// --- Search site controls (edit these to tune what gets searched) ---------
-// Always blocked: social/profile/aggregator noise.
-const EXCLUDE_SITES = [
-  'facebook.com', 'linkedin.com', 'zoominfo.com', 'twitter.com', 'x.com',
-  'instagram.com', 'youtube.com', 'pinterest.com', 'tracxn.com',
+// --- Search site whitelist (edit to tune what gets searched) --------------
+// General searches (company + promoter names): exchanges, regulator, the
+// established Indian market sites, court records, and old-but-gold Rediff.
+const GENERAL_SITES = [
+  'bseindia.com', 'nseindia.com', 'nsearchives.nseindia.com', 'sebi.gov.in',
+  'screener.in', 'trendlyne.com', 'chittorgarh.com', 'rediff.com',
+  'indiankanoon.org',
 ];
-// If non-empty, every query is restricted to ONLY these sites.
-// Leave empty to search the open web (minus EXCLUDE_SITES).
-// Official + primary sources only — where promoter disclosures actually live.
-const INCLUDE_SITES = [
+// PDF-only disclosure hunts go where the filings actually live.
+const PDF_SITES = [
   'bseindia.com', 'nseindia.com', 'nsearchives.nseindia.com',
-  'sebi.gov.in', 'nclt.gov.in', 'mca.gov.in', 'indiankanoon.org',
+  'sebi.gov.in', 'chittorgarh.com',
 ];
+// Credit / debt sources (rating agencies) — for default / pledge / downgrade.
+// (My read of "banks sites" — tell me if you meant literal bank websites.)
+const CREDIT_SITES = ['icra.in', 'crisil.com', 'careratings.com'];
 
 const CORS = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -167,14 +170,11 @@ function trustOf(url) {
   return 'news';
 }
 
-// Site filters appended to every query. A whitelist already limits to trusted
-// sites, so excludes are only needed when searching the open web.
-function siteClause() {
-  if (INCLUDE_SITES.length)
-    return '(' + INCLUDE_SITES.map(d => `site:${d}`).join(' OR ') + ')';
-  return EXCLUDE_SITES.map(d => `-site:${d}`).join(' ');
-}
-const applyFilter = base => `${base} ${siteClause()}`.trim();
+// Restrict a query to a given set of sites.
+const clause = sites => '(' + sites.map(d => `site:${d}`).join(' OR ') + ')';
+const applyFilter = base => `${base} ${clause(GENERAL_SITES)}`.trim();
+const applyPdf    = base => `${base} ${clause(PDF_SITES)}`.trim();
+const applyCredit = base => `${base} ${clause(CREDIT_SITES)}`.trim();
 
 // PHASE 1 — company-level: establish who the promoters are + base disclosures.
 function companyQueries(name) {
@@ -202,12 +202,17 @@ function promoterQueries(company, promoters) {
 // buried in the DRHP/RHP. (Snippets find the PDF; deep facts may sit inside it.)
 function disclosureQueries(company) {
   const c = `"${company}"`;
-  return [
+  const pdf = [
     `${c} (bulk deal OR block deal OR "inter-se transfer" OR "off market" OR SAST) filetype:pdf`,
     `${c} (OFS OR "offer for sale") (promoter OR "selling shareholder") filetype:pdf`,
-    `${c} (DRHP OR RHP OR prospectus) ("private equity" OR "venture capital" OR "selling shareholders" OR "pre-IPO" OR "offer for sale") filetype:pdf`,
+    `${c} (DRHP OR RHP OR prospectus) ("private equity" OR "venture capital" OR "selling shareholders" OR "pre-IPO") filetype:pdf`,
     `${c} (QIP OR FPO OR warrants OR "preferential allotment") filetype:pdf`,
-  ].map(applyFilter);
+  ].map(applyPdf);
+  // Debt / pledge / default via the rating agencies ("banks/credit" sources).
+  const credit = [
+    `${c} (default OR pledge OR "wilful defaulter" OR downgrade OR insolvency)`,
+  ].map(applyCredit);
+  return [...pdf, ...credit];
 }
 
 async function serperSearch(query, key) {
