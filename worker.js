@@ -99,13 +99,13 @@ export default {
 
       // --- Step 1: grounded research (cache-first; "fresh" bypasses the read) ---
       const skipCache = body.fresh === true;
-      let research, sources, droppedCount, searchHits, via, promoters = [], independents = [], fromCache = false;
+      let research, sources, droppedCount, dropReasons, searchHits, via, promoters = [], independents = [], fromCache = false;
 
       if (!skipCache && cacheKey !== 'co_' && env.COMPANY_CACHE) {
         try {
           const cached = await env.COMPANY_CACHE.get(cacheKey, 'json');
           if (cached && cached.research !== undefined) {
-            ({ research, sources, droppedCount, searchHits, via } = cached);
+            ({ research, sources, droppedCount, dropReasons, searchHits, via } = cached);
             promoters = cached.promoters || [];
             independents = cached.independents || [];
             fromCache = true;
@@ -117,12 +117,12 @@ export default {
       if (research === undefined) {
         const r = await groundedResearch(env, companyName, pdfText);
         research = r.research; sources = r.sources;
-        droppedCount = r.dropped; searchHits = r.searchHits; via = r.via;
+        droppedCount = r.dropped; dropReasons = r.dropReasons; searchHits = r.searchHits; via = r.via;
         promoters = r.promoters || [];
         independents = r.independents || [];
         if (cacheKey !== 'co_' && env.COMPANY_CACHE) {
           await env.COMPANY_CACHE.put(cacheKey,
-            JSON.stringify({ research, sources, droppedCount, searchHits, via, promoters, independents }),
+            JSON.stringify({ research, sources, droppedCount, dropReasons, searchHits, via, promoters, independents }),
             { expirationTtl: 2592000 });
         }
       }
@@ -133,6 +133,7 @@ export default {
         promoters,
         independents,
         search_via: via,
+        drop_reasons: dropReasons || {},
         has_serper_key: !!env.SERPER_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
         has_prompt_3: !!env.SYSTEM_PROMPT_3,
@@ -527,20 +528,44 @@ const norm = t => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase();
 const matchNorm = t => String(t || '')
   .toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 
+// Sliding-window match: any 5-consecutive-word run from the quote must appear
+// in the source.  This catches cases where the model copied words correctly but
+// inserted/dropped a punctuation mark or one connecting word.  Pure
+// hallucinations still fail: they have no 5-word run shared with the snippet.
+const SLIDE_WIN = 5;
+function slideMatch(normQuote, normSrc) {
+  const words = normQuote.split(' ').filter(Boolean);
+  if (words.length < SLIDE_WIN) return normSrc.includes(normQuote);
+  for (let i = 0; i <= words.length - SLIDE_WIN; i++) {
+    if (normSrc.includes(words.slice(i, i + SLIDE_WIN).join(' '))) return true;
+  }
+  return false;
+}
+
+// Returns { ok: bool, reason: string } so callers can count why facts die.
 function verifyFact(f, sources) {
-  if (norm(f.value) === 'not found') return false;
+  if (norm(f.value) === 'not found') return { ok: false, reason: 'not_found_value' };
   const src = sources[f.source_id];
-  if (!src) return false;
+  if (!src) return { ok: false, reason: 'no_source' };
   const q = matchNorm(f.quote);
-  if (q.split(' ').filter(Boolean).length < 6) return false;   // real anchor
-  if (!matchNorm(src.text).includes(q)) return false;          // invented/altered
-  return true;
+  if (q.split(' ').filter(Boolean).length < 4) return { ok: false, reason: 'too_short' };
+  if (!slideMatch(q, matchNorm(src.text))) return { ok: false, reason: 'quote_not_found' };
+  return { ok: true, reason: 'ok' };
 }
 
 function gate(facts, sources) {
   const kept = [], dropped = [];
-  for (const f of facts) (verifyFact(f, sources) ? kept : dropped).push(f);
-  return { kept, dropped };
+  const reasons = {};
+  for (const f of facts) {
+    const { ok, reason } = verifyFact(f, sources);
+    if (ok) {
+      kept.push(f);
+    } else {
+      dropped.push(f);
+      reasons[reason] = (reasons[reason] || 0) + 1;
+    }
+  }
+  return { kept, dropped, reasons };
 }
 
 // ---------------------------------------------------------------------------
@@ -555,11 +580,11 @@ async function groundedResearch(env, companyName, pdfText) {
   if (Object.keys(sources).length === 0)
     return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via, promoters, independents };
 
-  const { kept, dropped } = gate(await extractFacts(env, sources), sources);
-  console.log('GATE kept:', kept.length, 'dropped:', dropped.length);
+  const { kept, dropped, reasons } = gate(await extractFacts(env, sources), sources);
+  console.log('GATE kept:', kept.length, 'dropped:', dropped.length, 'reasons:', JSON.stringify(reasons));
 
   if (kept.length === 0)
-    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, searchHits, via, promoters, independents };
+    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, dropReasons: reasons, searchHits, via, promoters, independents };
 
   const byField = {};
   for (const f of kept) (byField[f.field] = byField[f.field] || []).push(f);
@@ -569,5 +594,5 @@ async function groundedResearch(env, companyName, pdfText) {
     research += `\n## ${field}\n`;
     for (const f of byField[field]) research += `- ${f.value}  [${sources[f.source_id].url}]\n`;
   }
-  return { research: research.trim(), sources: sourceList, dropped: dropped.length, searchHits, via, promoters, independents };
+  return { research: research.trim(), sources: sourceList, dropped: dropped.length, dropReasons: reasons, searchHits, via, promoters, independents };
 }
