@@ -1,10 +1,367 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Financial PDF Analyzer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial PDF Analyzer</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-light);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .file-drop-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .file-drop-area:hover {
+            border-color: var(--primary);
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+
+        .file-drop-area.dragover {
+            border-color: var(--primary);
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: var(--text-light);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .status.loading {
+            display: block;
+            background-color: #eff6ff;
+            color: var(--primary);
+            border: 1px solid #bfdbfe;
+        }
+
+        .status.error {
+            display: block;
+            background-color: #fef2f2;
+            color: var(--error);
+            border: 1px solid #fecaca;
+        }
+
+        .status.success {
+            display: block;
+            background-color: #ecfdf5;
+            color: var(--success);
+            border: 1px solid #a7f3d0;
+        }
+
+        .result-content {
+            margin-top: 2rem;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: none;
+        }
+
+        .result-content h2 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .result-content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f1f5f9;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .helper-text {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>Financial PDF Analyzer</h1>
+            <p class="subtitle">Upload a financial report to get AI-powered insights</p>
+        </header>
+
+        <div class="card">
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="pdfFile">Upload PDF Report</label>
+                    <div class="file-drop-area" id="dropArea">
+                        <span id="fileName">Drag & drop PDF here or click to browse</span>
+                        <input type="file" id="pdfFile" class="file-input" accept=".pdf" required>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="geminiKey">Gemini API Key (Optional)</label>
+                        <input type="password" id="geminiKey" placeholder="Enter your Google Gemini API Key">
+                        <div class="helper-text">Leave empty to use default provider.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="geminiModel">AI Model</label>
+                        <select id="geminiModel">
+                            <option value="default">Default (Groq/CF AI)</option>
+                            <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro</option>
+                            <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Deep Research)</option>
+                        </select>
+                        <div class="helper-text">Required if using Gemini Key.</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">Analyze Report</button>
+                
+                <div id="statusMessage" class="status"></div>
+            </form>
+        </div>
+
+        <div id="resultArea" class="result-content">
+            <h2>Analysis Results</h2>
+            <div id="resultText"></div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION: Update this URL if your Cloudflare Worker URL changes
+        const WORKER_URL = 'https://firstfor.learn-rahul-rai.workers.dev'; 
+
+        const fileInput = document.getElementById('pdfFile');
+        const fileNameDisplay = document.getElementById('fileName');
+        const dropArea = document.getElementById('dropArea');
+        const form = document.getElementById('uploadForm');
+        const statusMsg = document.getElementById('statusMessage');
+        const resultArea = document.getElementById('resultArea');
+        const resultText = document.getElementById('resultText');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // File Drag & Drop Visuals
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
+        });
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            updateFileName();
+        }
+
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = `Selected: ${fileInput.files[0].name}`;
+                fileNameDisplay.style.color = 'var(--primary)';
+                fileNameDisplay.style.fontWeight = '600';
+            } else {
+                fileNameDisplay.textContent = 'Drag & drop PDF here or click to browse';
+                fileNameDisplay.style.color = '';
+                fileNameDisplay.style.fontWeight = '';
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!fileInput.files.length) {
+                showStatus('Please select a PDF file.', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const geminiKey = document.getElementById('geminiKey').value;
+            const geminiModel = document.getElementById('geminiModel').value;
+
+            // Prepare Form Data
+            const formData = new FormData();
+            formData.append('file', file);
+            if (geminiKey) formData.append('gemini_key', geminiKey);
+            if (geminiModel && geminiModel !== 'default') formData.append('gemini_model', geminiModel);
+
+            // UI State: Loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Analyzing...';
+            showStatus('Processing your document. This may take a moment...', 'loading');
+            resultArea.style.display = 'none';
+
+            try {
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Display Result
+                resultText.innerHTML = `<pre>${data.result || JSON.stringify(data, null, 2)}</pre>`;
+                if(data.diagnostics) {
+                    resultText.innerHTML += `<p><small><strong>Diagnostics:</strong> ${JSON.stringify(data.diagnostics)}</small></p>`;
+                }
+                resultArea.style.display = 'block';
+                showStatus('Analysis completed successfully!', 'success');
 
 <h1>Financial PDF Analyzer</h1>
 <hr>
@@ -200,5 +557,10 @@
   });
 </script>
 
+        function showStatus(message, type) {
+            statusMsg.textContent = message;
+            statusMsg.className = `status ${type}`;
+        }
+    </script>
 </body>
 </html>
