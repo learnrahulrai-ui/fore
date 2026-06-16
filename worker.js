@@ -32,6 +32,9 @@ const MAIN_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';  // only used whe
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
+// Google Gemini API endpoint
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
 // Results from these domains are tagged "primary" so they stand out.
@@ -103,6 +106,10 @@ export default {
       // Name comes from the document head (cover page), sent separately by the
       // browser — the analysis chunk skips the first 30% and would miss it.
       const headText = body.head || pdfText.slice(0, 2000);
+      // Gemini API key and model from client (optional)
+      const geminiKey = body.gemini_key || null;
+      const geminiModel = body.gemini_model || null;
+      
       const companyName = await extractCompanyName(env, headText);
       const cacheKey = 'co_' + companyName.toLowerCase()
         .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 80);
@@ -148,15 +155,17 @@ export default {
         has_groq_key: !!env.GROQ_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
         has_prompt_3: !!env.SYSTEM_PROMPT_3,
+        using_gemini: !!geminiKey,
+        gemini_model: geminiModel || 'none',
       };
       console.log('DIAG', JSON.stringify(diag));
 
       // --- Step 2: analyze the PDF with verified facts as context ---
       const analysis = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_2,
-        `VERIFIED COMPANY FACTS:\n${research}\n\nDOCUMENT:\n${pdfText}`, 2048);
+        `VERIFIED COMPANY FACTS:\n${research}\n\nDOCUMENT:\n${pdfText}`, 2048, geminiKey, geminiModel);
 
       // --- Step 3: condense ---
-      const report = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_3, analysis, 1024);
+      const report = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_3, analysis, 1024, geminiKey, geminiModel);
 
       // Strip the raw query strings — never expose the trick queries to the
       // browser. Only the found documents (title/url/snippet) go to the user.
@@ -216,9 +225,60 @@ async function runCF(env, model, system, user, maxTokens) {
   return (out.response ?? '').trim();
 }
 
-// For analysis + report: prefer Groq (saves CF neurons, better model).
+// Gemini API path — uses client-provided key from the request body.
+// Supports both standard Gemini models and deep research variants.
+async function runGemini(apiKey, model, system, user, maxTokens) {
+  // Check if this is a deep research model
+  const isDeepResearch = model && model.includes('deep-research');
+  
+  if (isDeepResearch) {
+    // Deep Research API has a different endpoint structure
+    const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: user }] }],
+        systemInstruction: { parts: [{ text: system || '' }] },
+        generationConfig: { maxOutputTokens: maxTokens },
+      }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error('Gemini Deep Research: ' + (e.error?.message || res.statusText));
+    }
+    const d = await res.json();
+    return (d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') ?? '').trim();
+  } else {
+    // Standard Gemini generateContent API
+    const actualModel = model || 'gemini-2.5-flash-preview-05-20';
+    const url = `${GEMINI_ENDPOINT}/${actualModel}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: user }] }],
+        systemInstruction: { parts: [{ text: system || '' }] },
+        generationConfig: { maxOutputTokens: maxTokens },
+      }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error('Gemini: ' + (e.error?.message || res.statusText));
+    }
+    const d = await res.json();
+    return (d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') ?? '').trim();
+  }
+}
+
+// For analysis + report: prefer user-provided Gemini key, then Groq, then CF AI.
 // _cfModel arg retained so callers don't need to change.
-async function runModel(env, _cfModel, system, user, maxTokens) {
+async function runModel(env, _cfModel, system, user, maxTokens, geminiKey, geminiModel) {
+  // If user provided a Gemini API key, use that first
+  if (geminiKey) {
+    return runGemini(geminiKey, geminiModel, system, user, maxTokens);
+  }
+  // Otherwise fall back to Groq (saves CF neurons, better model)
   if (env.GROQ_API_KEY) return runGroq(env.GROQ_API_KEY, system, user, maxTokens);
   return runCF(env, FAST_MODEL, system, user, maxTokens);
 }
