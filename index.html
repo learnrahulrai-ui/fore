@@ -17,11 +17,7 @@
             --error: #ef4444;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -31,197 +27,75 @@
             padding: 2rem;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+        .container { max-width: 900px; margin: 0 auto; }
 
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 0.5rem;
-        }
-
-        p.subtitle {
-            color: var(--text-light);
-        }
+        header { text-align: center; margin-bottom: 2rem; }
+        h1 { font-size: 2rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+        p.subtitle { color: var(--text-light); }
 
         .card {
             background: var(--card-bg);
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             padding: 2rem;
             margin-bottom: 2rem;
             border: 1px solid var(--border);
         }
 
-        .form-group {
-            margin-bottom: 1.5rem;
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+        
+        input[type="text"], input[type="password"], select {
+            width: 100%; padding: 0.75rem; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 1rem; transition: border-color 0.2s;
         }
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--text);
-        }
-
-        input[type="text"],
-        input[type="password"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
         .file-drop-area {
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 2rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
+            border: 2px dashed var(--border); border-radius: 8px; padding: 2rem;
+            text-align: center; cursor: pointer; transition: all 0.2s; position: relative;
         }
-
-        .file-drop-area:hover {
-            border-color: var(--primary);
-            background-color: rgba(37, 99, 235, 0.05);
-        }
-
-        .file-drop-area.dragover {
-            border-color: var(--primary);
-            background-color: rgba(37, 99, 235, 0.1);
-        }
-
-        .file-input {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
+        .file-drop-area:hover { border-color: var(--primary); background-color: rgba(37, 99, 235, 0.05); }
+        .file-drop-area.dragover { border-color: var(--primary); background-color: rgba(37, 99, 235, 0.1); }
+        .file-input { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
         .btn {
-            display: inline-block;
-            background-color: var(--primary);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
-            text-align: center;
+            display: inline-block; background-color: var(--primary); color: white;
+            padding: 0.75rem 1.5rem; border: none; border-radius: 6px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: background-color 0.2s; width: 100%; text-align: center;
         }
+        .btn:hover { background-color: var(--primary-hover); }
+        .btn:disabled { background-color: var(--text-light); cursor: not-allowed; opacity: 0.7; }
 
-        .btn:hover {
-            background-color: var(--primary-hover);
-        }
+        .status { margin-top: 1rem; padding: 1rem; border-radius: 6px; display: none; }
+        .status.loading { display: block; background-color: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+        .status.error { display: block; background-color: #fef2f2; color: var(--error); border: 1px solid #fecaca; }
+        .status.success { display: block; background-color: #ecfdf5; color: var(--success); border: 1px solid #a7f3d0; }
 
-        .btn:disabled {
-            background-color: var(--text-light);
-            cursor: not-allowed;
-            opacity: 0.7;
+        .result-section { margin-top: 2rem; display: none; }
+        .result-card {
+            background: var(--card-bg); padding: 1.5rem; border-radius: 8px;
+            border: 1px solid var(--border); margin-bottom: 1.5rem;
         }
-
-        .status {
-            margin-top: 1rem;
-            padding: 1rem;
-            border-radius: 6px;
-            display: none;
+        .result-card h3 { color: var(--primary); margin-bottom: 0.5rem; font-size: 1.1rem; }
+        .result-card pre {
+            white-space: pre-wrap; word-wrap: break-word; background: #f1f5f9;
+            padding: 1rem; border-radius: 6px; font-size: 0.9rem; max-height: 400px; overflow-y: auto;
         }
-
-        .status.loading {
-            display: block;
-            background-color: #eff6ff;
-            color: var(--primary);
-            border: 1px solid #bfdbfe;
-        }
-
-        .status.error {
-            display: block;
-            background-color: #fef2f2;
-            color: var(--error);
-            border: 1px solid #fecaca;
-        }
-
-        .status.success {
-            display: block;
-            background-color: #ecfdf5;
-            color: var(--success);
-            border: 1px solid #a7f3d0;
-        }
-
-        .result-content {
-            margin-top: 2rem;
-            background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            display: none;
-        }
-
-        .result-content h2 {
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-        }
-
-        .result-content pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            background: #f1f5f9;
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        @media (max-width: 600px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-        }
+        .helper-text { font-size: 0.875rem; color: var(--text-light); margin-top: 0.25rem; }
+        .checkbox-group { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .checkbox-group input { width: auto; }
         
-        .helper-text {
-            font-size: 0.875rem;
-            color: var(--text-light);
-            margin-top: 0.25rem;
-        }
+        .source-link { color: var(--primary); text-decoration: none; }
+        .source-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Financial PDF Analyzer</h1>
-            <p class="subtitle">Upload a financial report to get AI-powered insights</p>
+            <p class="subtitle">Upload a financial report to get AI-powered insights & deep research</p>
         </header>
 
         <div class="card">
@@ -232,9 +106,10 @@
                         <span id="fileName">Drag & drop PDF here or click to browse</span>
                         <input type="file" id="pdfFile" class="file-input" accept=".pdf" required>
                     </div>
+                    <div id="fileStatus" class="helper-text" style="margin-top: 0.5rem;"></div>
                 </div>
 
-                <div class="grid-2">
+                <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label for="geminiKey">Gemini API Key (Optional)</label>
                         <input type="password" id="geminiKey" placeholder="Enter your Google Gemini API Key">
@@ -244,138 +119,256 @@
                         <label for="geminiModel">AI Model</label>
                         <select id="geminiModel">
                             <option value="default">Default (Groq/CF AI)</option>
-                            <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash</option>
-                            <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro</option>
-                            <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Deep Research)</option>
+                            <!-- Updated to stable models where possible, kept previews if necessary for features -->
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini-2.5-pro-exp-08-01">Gemini 2.5 Pro (Deep Research)</option>
                         </select>
                         <div class="helper-text">Required if using Gemini Key.</div>
                     </div>
                 </div>
 
-                <button type="submit" class="btn" id="submitBtn">Analyze Report</button>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="freshSearch">
+                    <label for="freshSearch" style="margin:0; font-weight: normal;">Force fresh web search (ignore cache)</label>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn" disabled>Analyze Report</button>
                 
                 <div id="statusMessage" class="status"></div>
             </form>
         </div>
 
-        <div id="resultArea" class="result-content">
-            <h2>Analysis Results</h2>
-            <div id="resultText"></div>
+        <!-- Results Area -->
+        <div id="resultArea" class="result-section">
+            <div class="result-card">
+                <h3 id="companyHeader">Company Info</h3>
+                <p id="sourcesLine" style="font-size: 0.9em; color: var(--text-light);"></p>
+            </div>
+
+            <div class="result-card">
+                <h3>Web Search Results</h3>
+                <div id="outSearch" style="font-size: 0.9em;"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Verified Company Facts (Grounded Research)</h3>
+                <p id="groundingNote" style="font-size: 0.85em; color: var(--text-light); margin-bottom: 0.5rem;"></p>
+                <pre id="outResearch"></pre>
+            </div>
+
+            <div class="result-card">
+                <h3>PDF Analysis</h3>
+                <pre id="outAnalysis"></pre>
+            </div>
+
+            <div class="result-card">
+                <h3>Final Integrated Report</h3>
+                <pre id="outReport"></pre>
+            </div>
+            
+            <div class="result-card" style="background: #f8fafc;">
+                <h3>Diagnostics</h3>
+                <pre id="diagLine" style="font-size: 0.8em; color: #64748b;"></pre>
+            </div>
         </div>
     </div>
 
+    <!-- PDF.js for client-side extraction (Saves Budget & Token Limits) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
-        // CONFIGURATION: Update this URL if your Cloudflare Worker URL changes
-        const WORKER_URL = 'https://firstfor.learn-rahul-rai.workers.dev'; 
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+        const WORKER_URL = 'https://firstfor.learn-rahul-rai.workers.dev';
+
+        // DOM Elements
         const fileInput = document.getElementById('pdfFile');
         const fileNameDisplay = document.getElementById('fileName');
         const dropArea = document.getElementById('dropArea');
+        const fileStatus = document.getElementById('fileStatus');
         const form = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
         const statusMsg = document.getElementById('statusMessage');
         const resultArea = document.getElementById('resultArea');
-        const resultText = document.getElementById('resultText');
-        const submitBtn = document.getElementById('submitBtn');
+        
+        // Result Elements
+        const companyHeader = document.getElementById('companyHeader');
+        const sourcesLine = document.getElementById('sourcesLine');
+        const outSearch = document.getElementById('outSearch');
+        const groundingNote = document.getElementById('groundingNote');
+        const outResearch = document.getElementById('outResearch');
+        const outAnalysis = document.getElementById('outAnalysis');
+        const outReport = document.getElementById('outReport');
+        const diagLine = document.getElementById('diagLine');
 
-        // File Drag & Drop Visuals
+        let extractedText = '';
+        let headText = '';
+
+        // Drag & Drop Logic
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropArea.addEventListener(eventName, preventDefaults, false);
         });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
         ['dragenter', 'dragover'].forEach(eventName => {
             dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
         });
-
         ['dragleave', 'drop'].forEach(eventName => {
             dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
         });
-
         dropArea.addEventListener('drop', handleDrop, false);
-
         function handleDrop(e) {
             const dt = e.dataTransfer;
-            const files = dt.files;
-            fileInput.files = files;
+            fileInput.files = dt.files;
             updateFileName();
         }
-
         fileInput.addEventListener('change', updateFileName);
 
         function updateFileName() {
             if (fileInput.files.length > 0) {
-                fileNameDisplay.textContent = `Selected: ${fileInput.files[0].name}`;
+                const file = fileInput.files[0];
+                fileNameDisplay.textContent = `Selected: ${file.name}`;
                 fileNameDisplay.style.color = 'var(--primary)';
                 fileNameDisplay.style.fontWeight = '600';
+                
+                if (file.type !== 'application/pdf') {
+                    fileStatus.textContent = 'Error: Please upload a valid PDF file.';
+                    fileStatus.style.color = 'var(--error)';
+                    submitBtn.disabled = true;
+                    return;
+                }
+                
+                fileStatus.textContent = 'Reading PDF...';
+                extractText(file);
             } else {
                 fileNameDisplay.textContent = 'Drag & drop PDF here or click to browse';
                 fileNameDisplay.style.color = '';
                 fileNameDisplay.style.fontWeight = '';
+                submitBtn.disabled = true;
+            }
+        }
+
+        // Core Logic: Extract Text in Browser to Save Budget/Tokens
+        async function extractText(file) {
+            try {
+                const buf = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+                const parts = [];
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const tc = await page.getTextContent();
+                    parts.push(tc.items.map(x => x.str).join(' '));
+                }
+
+                const fullText = parts.join('\n\n').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+                
+                // Strategy: Extract middle chunk for analysis to avoid token limits on huge files
+                // Keep first 2000 chars for company detection, then skip to the meat (30% mark)
+                const MAX_CHARS = 25000; 
+                const start = Math.floor(fullText.length * 0.30);
+                
+                extractedText = fullText.slice(start, start + MAX_CHARS);
+                headText = fullText.slice(0, 2000);
+
+                fileStatus.textContent = `Loaded ${pdf.numPages} pages. Extracted ${extractedText.length.toLocaleString()} chars for analysis.`;
+                fileStatus.style.color = 'var(--success)';
+                submitBtn.disabled = false;
+            } catch (e) {
+                fileStatus.textContent = 'Error reading PDF: ' + e.message;
+                fileStatus.style.color = 'var(--error)';
+                submitBtn.disabled = true;
             }
         }
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!extractedText) return;
 
-            if (!fileInput.files.length) {
-                showStatus('Please select a PDF file.', 'error');
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const geminiKey = document.getElementById('geminiKey').value;
+            const geminiKey = document.getElementById('geminiKey').value.trim();
             const geminiModel = document.getElementById('geminiModel').value;
-
-            // Prepare Form Data
-            const formData = new FormData();
-            formData.append('file', file);
-            if (geminiKey) formData.append('gemini_key', geminiKey);
-            if (geminiModel && geminiModel !== 'default') formData.append('gemini_model', geminiModel);
+            const freshSearch = document.getElementById('freshSearch').checked;
 
             // UI State: Loading
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Analyzing...';
-            showStatus('Processing your document. This may take a moment...', 'loading');
+            submitBtn.textContent = 'Analyzing & Researching...';
+            statusMsg.textContent = 'Processing: Extracting text, searching web, and verifying facts. This may take 1-2 minutes.';
+            statusMsg.className = 'status loading';
             resultArea.style.display = 'none';
 
             try {
+                // Send JSON payload (Text) instead of Binary File
+                const payload = {
+                    text: extractedText,
+                    head: headText,
+                    fresh: freshSearch,
+                    gemini_key: geminiKey || undefined,
+                    gemini_model: geminiModel !== 'default' ? geminiModel : undefined
+                };
+
                 const response = await fetch(WORKER_URL, {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
                     throw new Error(errorData.error || `Server error: ${response.status}`);
                 }
 
                 const data = await response.json();
+
+                // Populate Results
+                companyHeader.textContent = `Company: ${data.company || 'Unknown'} ${data.cached ? '(Cached)' : '(Fresh)'}`;
                 
-                // Display Result
-                resultText.innerHTML = `<pre>${data.result || JSON.stringify(data, null, 2)}</pre>`;
-                if(data.diagnostics) {
-                    resultText.innerHTML += `<p><small><strong>Diagnostics:</strong> ${JSON.stringify(data.diagnostics)}</small></p>`;
+                // Sources
+                if (data.sources && data.sources.length) {
+                    sourcesLine.innerHTML = 'Sources checked: ' + data.sources.map(s => 
+                        `<a href="${s.url}" target="_blank" class="source-link">${s.trust || s.url}</a>`
+                    ).join(', ');
+                } else {
+                    sourcesLine.textContent = 'No external sources retrieved.';
                 }
+
+                // Search Results
+                if (data.search && data.search.length) {
+                    outSearch.innerHTML = data.search.map(h => 
+                        `<div style="margin-bottom:0.5rem;">
+                            <a href="${h.url}" target="_blank" class="source-link"><strong>${h.title || h.url}</strong></a><br>
+                            <span style="color:#64748b;">${h.snippet}</span>
+                        </div>`
+                    ).join('');
+                } else {
+                    outSearch.textContent = 'No web search results found or skipped.';
+                }
+
+                // Grounding Note
+                const dropped = data.dropped_count || 0;
+                groundingNote.textContent = dropped > 0 
+                    ? `${dropped} claim(s) dropped due to lack of source verification.` 
+                    : 'All facts below were verified against source quotes.';
+
+                outResearch.textContent = data.research || 'No research data.';
+                outAnalysis.textContent = data.analysis || 'No analysis data.';
+                outReport.textContent = data.report || 'No final report generated.';
+                
+                if (data.diag) {
+                    diagLine.textContent = JSON.stringify(data.diag, null, 2);
+                }
+
                 resultArea.style.display = 'block';
-                showStatus('Analysis completed successfully!', 'success');
+                statusMsg.textContent = 'Analysis completed successfully!';
+                statusMsg.className = 'status success';
 
             } catch (error) {
                 console.error('Error:', error);
-                showStatus(`Error: ${error.message}`, 'error');
+                statusMsg.textContent = `Error: ${error.message}`;
+                statusMsg.className = 'status error';
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Analyze Report';
             }
         });
-
-        function showStatus(message, type) {
-            statusMsg.textContent = message;
-            statusMsg.className = `status ${type}`;
-        }
     </script>
 </body>
 </html>
