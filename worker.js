@@ -101,6 +101,12 @@ function json(obj, status = 200) {
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    // Health/version probe — makes a deploy verifiable. Seeing the model name
+    // here (gemini-3.5-flash) confirms the new build is actually live. No
+    // secrets are exposed: only the model id and feature flags.
+    if (request.method === 'GET') {
+      return json({ ok: true, model: GEMINI_MODEL, edge_cache: true, placement: 'smart' });
+    }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
     let body;
