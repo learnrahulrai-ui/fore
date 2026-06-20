@@ -10,6 +10,24 @@
 <hr>
 
 <p>
+  Upload a company financial PDF &mdash; annual report, quarterly results, prospectus/DRHP,
+  shareholding disclosure, investor presentation, or an exchange filing. The file is read
+  in your browser; only the extracted text is sent for analysis.
+</p>
+
+<p>
+  <label for="api-key">Your Google Gemini API key:</label><br>
+  <input type="password" id="api-key" size="48" placeholder="AIza..." autocomplete="off" spellcheck="false">
+  <br>
+  <small>
+    Free, no credit card &mdash; get one at
+    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+    Your key is used only to run this one analysis. It is never stored, never logged,
+    and never saved in your browser.
+  </small>
+</p>
+
+<p>
   <label for="pdf-file">PDF file:</label><br>
   <input type="file" id="pdf-file" accept=".pdf">
 </p>
@@ -65,9 +83,16 @@
   const outAnalysis = document.getElementById('out-analysis');
   const outReport   = document.getElementById('out-report');
 
-  const freshEl = document.getElementById('fresh');
+  const freshEl  = document.getElementById('fresh');
+  const apiKeyEl = document.getElementById('api-key');
   let extractedText = '';
   let headText = '';
+
+  // Analyze is allowed only once we have BOTH a parsed PDF and a key.
+  function checkReady() {
+    analyzeBtn.disabled = !(extractedText && apiKeyEl.value.trim());
+  }
+  apiKeyEl.addEventListener('input', checkReady);
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -106,7 +131,7 @@
       extractedText = full.slice(start, start + MAX_CHARS);
       headText = full.slice(0, 2000); // cover page, for company-name detection
       fileStatus.textContent = pdf.numPages + ' page(s) loaded, ' + extractedText.length.toLocaleString() + ' chars.';
-      analyzeBtn.disabled = false;
+      checkReady();
     } catch (e) {
       fileStatus.textContent = 'Error reading PDF: ' + e.message;
     }
@@ -121,12 +146,23 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: extractedText, head: headText, fresh: freshEl.checked }),
+        body: JSON.stringify({
+          text: extractedText,
+          head: headText,
+          fresh: freshEl.checked,
+          geminiKey: apiKeyEl.value.trim(),
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok || data.error) throw new Error(data.error || res.statusText);
+
+      // The worker first checks the file really is a financial document.
+      if (data.financial === false) {
+        statusEl.textContent = data.message || 'This does not look like a financial PDF.';
+        return;
+      }
 
       companyLine.textContent = 'Company: ' + data.company + (data.cached ? ' (from cache)' : ' (freshly checked)');
 

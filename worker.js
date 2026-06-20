@@ -27,10 +27,16 @@ const FAST_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const MAIN_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';  // only used when CF AI is the sole option
 
 // Groq free tier: llama-3.3-70b-versatile, 100k tokens/day, no credit card.
-// When GROQ_API_KEY is set as a CF Secret, analysis + report run here instead
-// of burning the CF neuron budget.
+// Only used as a fallback if the user did NOT bring a Gemini key.
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+// PRIMARY path: the USER brings their own Google Gemini key. Every model call
+// then runs on their key and their quota — so this worker never burns its free
+// Cloudflare neuron budget and never has to pay for anyone's analysis. The key
+// arrives per-request, is used once, and is NEVER logged, cached, or stored.
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
@@ -98,12 +104,32 @@ export default {
     catch { return json({ error: 'Invalid JSON' }, 400); }
     if (!body.text) return json({ error: 'Missing text' }, 400);
 
+    // The user brings their own Gemini key. We use it once, in-memory, for this
+    // request only. It is NEVER written to a log line, the KV cache, or the
+    // response. (Search the file: the key never appears in any console.log.)
+    const geminiKey = (body.geminiKey || '').trim();
+    if (!geminiKey) {
+      return json({ error: 'Please paste your Google Gemini API key. Get a free one (no card) at https://aistudio.google.com/apikey' }, 400);
+    }
+
     try {
       const pdfText = body.text;
       // Name comes from the document head (cover page), sent separately by the
       // browser — the analysis chunk skips the first 30% and would miss it.
       const headText = body.head || pdfText.slice(0, 2000);
-      const companyName = await extractCompanyName(env, headText);
+
+      // Gate 1: is this even a financial document? Cheap one-word classify on
+      // the user's key. Saves their quota on the heavy steps if it's the wrong
+      // file, and tells them plainly.
+      const looksFinancial = await isFinancialPdf(env, geminiKey, headText + '\n' + pdfText.slice(0, 3000));
+      if (!looksFinancial) {
+        return json({
+          financial: false,
+          message: 'This does not look like a financial document. Please upload a company financial PDF — an annual report, quarterly results, prospectus/DRHP, shareholding disclosure, investor presentation, or an exchange filing.',
+        });
+      }
+
+      const companyName = await extractCompanyName(env, geminiKey, headText);
       const cacheKey = 'co_' + companyName.toLowerCase()
         .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 80);
 
@@ -125,7 +151,7 @@ export default {
       }
 
       if (research === undefined) {
-        const r = await groundedResearch(env, companyName, pdfText);
+        const r = await groundedResearch(env, geminiKey, companyName, pdfText);
         research = r.research; sources = r.sources;
         droppedCount = r.dropped; dropReasons = r.dropReasons; searchHits = r.searchHits; via = r.via;
         promoters = r.promoters || [];
@@ -144,19 +170,27 @@ export default {
         independents,
         search_via: via,
         drop_reasons: dropReasons || {},
+        has_user_key: !!geminiKey,      // boolean only — never the key value
         has_serper_key: !!env.SERPER_API_KEY,
-        has_groq_key: !!env.GROQ_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
         has_prompt_3: !!env.SYSTEM_PROMPT_3,
       };
       console.log('DIAG', JSON.stringify(diag));
 
-      // --- Step 2: analyze the PDF with verified facts as context ---
-      const analysis = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_2,
-        `VERIFIED COMPANY FACTS:\n${research}\n\nDOCUMENT:\n${pdfText}`, 2048);
+      // --- Step 2: the ONE grounded call. The model reasons over the PDF +
+      // verified facts AND searches the live web (Google Search grounding),
+      // all directed by the secret SYSTEM_PROMPT_2. Falls back to a plain call
+      // if grounding isn't available on the user's key/quota. ---
+      const analysisInput = `VERIFIED COMPANY FACTS:\n${research}\n\nDOCUMENT:\n${pdfText}`;
+      let analysis;
+      try {
+        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048, { grounded: true });
+      } catch {
+        analysis = await aiText(env, geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048);
+      }
 
-      // --- Step 3: condense ---
-      const report = await runModel(env, MAIN_MODEL, env.SYSTEM_PROMPT_3, analysis, 1024);
+      // --- Step 3: condense into the final report ---
+      const report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 1024);
 
       // Strip the raw query strings — never expose the trick queries to the
       // browser. Only the found documents (title/url/snippet) go to the user.
@@ -216,22 +250,55 @@ async function runCF(env, model, system, user, maxTokens) {
   return (out.response ?? '').trim();
 }
 
-// For analysis + report: prefer Groq (saves CF neurons, better model).
-// _cfModel arg retained so callers don't need to change.
-async function runModel(env, _cfModel, system, user, maxTokens) {
+// Gemini path: the user's own key. Sent via the x-goog-api-key header (not the
+// URL) so the key never lands in any request line that might be logged upstream.
+async function runGemini(key, system, user, maxTokens, opts = {}) {
+  const reqBody = {
+    system_instruction: { parts: [{ text: system || '' }] },
+    contents: [{ role: 'user', parts: [{ text: user.slice(0, 24000) }] }],
+    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.2 },
+  };
+  // Google Search grounding: the model searches the live web (filings, news,
+  // exchange disclosures) while it answers and returns citations. WHAT it hunts
+  // for is driven entirely by the secret system prompt.
+  if (opts.grounded) reqBody.tools = [{ google_search: {} }];
+  const res = await fetch(`${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(reqBody),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    // Surface key/quota errors to the user — but never echo the key.
+    throw new Error('Gemini API: ' + (e.error?.message || res.statusText));
+  }
+  const d = await res.json();
+  const parts = d.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || '').join('').trim();
+}
+
+// Unified text-generation call. With a user Gemini key (the normal path) every
+// model step runs on the user's key/quota. Groq/CF remain only as a fallback so
+// the owner could still run it key-less for testing.
+async function aiText(env, geminiKey, system, user, maxTokens) {
+  if (geminiKey) return runGemini(geminiKey, system, user, maxTokens);
   if (env.GROQ_API_KEY) return runGroq(env.GROQ_API_KEY, system, user, maxTokens);
   return runCF(env, FAST_MODEL, system, user, maxTokens);
 }
 
-async function extractCompanyName(env, headText) {
-  const out = await env.AI.run(FAST_MODEL, {
-    messages: [
-      { role: 'system', content: 'You are given the opening text of a financial document (cover/first page). Return the issuing company\'s name exactly as printed, including "Limited"/"Ltd" if shown (e.g. "Asian Paints Limited"). Reply with ONLY the name — no quotes, no extra words.' },
-      { role: 'user', content: headText.slice(0, 1500) },
-    ],
-    max_tokens: 30,
-  });
-  return (out.response ?? '').trim().replace(/^["']+|["']+$/g, '');
+// Gate: is this a financial / corporate-disclosure document at all?
+async function isFinancialPdf(env, geminiKey, sample) {
+  const out = await aiText(env, geminiKey,
+    'You are a strict classifier. Decide if the text is from a FINANCIAL or CORPORATE-DISCLOSURE document of a company — e.g. annual report, quarterly/financial results, balance sheet or profit-and-loss, prospectus or DRHP/RHP, shareholding pattern, investor presentation, earnings-call transcript, credit-rating rationale, or a stock-exchange filing. Reply with ONLY one word: YES or NO.',
+    sample.slice(0, 4000), 4);
+  return /\byes\b/i.test(out);
+}
+
+async function extractCompanyName(env, geminiKey, headText) {
+  const out = await aiText(env, geminiKey,
+    'You are given the opening text of a financial document (cover/first page). Return the issuing company\'s name exactly as printed, including "Limited"/"Ltd" if shown (e.g. "Asian Paints Limited"). Reply with ONLY the name — no quotes, no extra words.',
+    headText.slice(0, 1500), 30);
+  return out.trim().replace(/^["']+|["']+$/g, '');
 }
 
 // ---------------------------------------------------------------------------
@@ -367,18 +434,13 @@ async function serperSearch(query, key) {
 // Authoritative board roster comes from the UPLOADED filing, not noisy web
 // snippets — the document literally lists its own directors + shareholdings.
 // Excludes the company secretary, auditors and ceremonial/ministerial mentions.
-async function extractBoardFromPdf(env, pdfText) {
+async function extractBoardFromPdf(env, geminiKey, pdfText) {
   if (!pdfText) return { promoters: [], independents: [] };
-  const out = await env.AI.run(FAST_MODEL, {
-    messages: [
-      { role: 'system', content: 'From this company filing, list the people on its BOARD OF DIRECTORS. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / executive / managing directors (max 4). independents = independent or non-executive directors (max 4). Full personal names only. Do NOT include the Company Secretary, Compliance Officer, auditors, or any government minister mentioned ceremonially. Unknown list = [].' },
-      { role: 'user', content: pdfText.slice(0, 6000) },
-    ],
-    max_tokens: 200,
-  });
+  const s = await aiText(env, geminiKey,
+    'From this company filing, list the people on its BOARD OF DIRECTORS. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / executive / managing directors (max 4). independents = independent or non-executive directors (max 4). Full personal names only. Do NOT include the Company Secretary, Compliance Officer, auditors, or any government minister mentioned ceremonially. Unknown list = [].',
+    pdfText.slice(0, 6000), 200);
   const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 4) : [];
   try {
-    const s = out.response ?? '';
     const obj = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
     return { promoters: clean(obj.promoters), independents: clean(obj.independents) };
   } catch { return { promoters: [], independents: [] }; }
@@ -387,26 +449,21 @@ async function extractBoardFromPdf(env, pdfText) {
 // Pull key people out of phase-1 snippets so phase 2 can search by person:
 // promoters (where insider/off-market trades live) and independent directors
 // (whose other boards + fees reveal capture).
-async function extractKeyPeople(env, sources) {
+async function extractKeyPeople(env, geminiKey, sources) {
   const ids = Object.keys(sources);
   if (!ids.length) return { promoters: [], independents: [] };
   const blob = ids.map(id => sources[id].text).join('\n').slice(0, 3000);
-  const out = await env.AI.run(FAST_MODEL, {
-    messages: [
-      { role: 'system', content: 'From the text, identify this company\'s board members. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / managing / executive directors (max 3). independents = independent or non-executive directors (max 3). Full names only. Unknown list = [].' },
-      { role: 'user', content: blob },
-    ],
-    max_tokens: 200,
-  });
+  const s = await aiText(env, geminiKey,
+    'From the text, identify this company\'s board members. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / managing / executive directors (max 3). independents = independent or non-executive directors (max 3). Full names only. Unknown list = [].',
+    blob, 200);
   const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 3) : [];
   try {
-    const s = out.response ?? '';
     const obj = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
     return { promoters: clean(obj.promoters), independents: clean(obj.independents) };
   } catch { return { promoters: [], independents: [] }; }
 }
 
-async function fetchSourcesSerper(env, companyName, key, board) {
+async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   const sources = {};
   const searchHits = [];
   const seen = new Set();   // dedupe identical URLs across the ~26 queries
@@ -434,7 +491,7 @@ async function fetchSourcesSerper(env, companyName, key, board) {
   let promoters = (board && board.promoters) || [];
   let independents = (board && board.independents) || [];
   if (!promoters.length && !independents.length) {
-    ({ promoters, independents } = await extractKeyPeople(env, sources));
+    ({ promoters, independents } = await extractKeyPeople(env, geminiKey, sources));
   }
   console.log('PEOPLE:', JSON.stringify({ promoters, independents }));
 
@@ -478,9 +535,9 @@ async function fetchSourcesWikipedia(companyName) {
   return sources;
 }
 
-async function fetchSources(env, companyName, board) {
+async function fetchSources(env, geminiKey, companyName, board) {
   if (env.SERPER_API_KEY) {
-    const { sources, searchHits, promoters, independents } = await fetchSourcesSerper(env, companyName, env.SERPER_API_KEY, board);
+    const { sources, searchHits, promoters, independents } = await fetchSourcesSerper(env, geminiKey, companyName, env.SERPER_API_KEY, board);
     // Key is set: trust Serper. If it returned nothing, the key is likely
     // invalid or out of quota — say so rather than masking it with Wikipedia.
     const via = Object.keys(sources).length > 0 ? 'serper' : 'serper-empty';
@@ -537,20 +594,15 @@ FIELDS:
 SOURCES:
 `;
 
-async function extractFacts(env, sources) {
-  // 25 sources × 500 chars ≈ 12,500 chars ≈ 3,125 tokens.
-  // With FAST_MODEL output budget, total ≈ 4,125 tokens × 0.2 ≈ 825 CF neurons.
-  const ids = Object.keys(sources).slice(0, 25);
+async function extractFacts(env, geminiKey, sources) {
+  // Cap input so a big query set can't overflow the model context.
+  const ids = Object.keys(sources).slice(0, 40);
   if (ids.length === 0) return [];
-  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 500)}`).join('\n\n');
-  const out = await env.AI.run(FAST_MODEL, {
-    messages: [
-      { role: 'system', content: 'You extract only facts present verbatim in the provided sources. You never invent.' },
-      { role: 'user', content: EXTRACT_PROMPT + blob },
-    ],
-    max_tokens: 1200,
-  });
-  return parseFacts(out.response ?? '');
+  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 600)}`).join('\n\n');
+  const out = await aiText(env, geminiKey,
+    'You extract only facts present verbatim in the provided sources. You never invent.',
+    EXTRACT_PROMPT + blob, 2000);
+  return parseFacts(out);
 }
 
 function parseFacts(raw) {
@@ -617,16 +669,16 @@ function gate(facts, sources) {
 // ---------------------------------------------------------------------------
 // Compose verified research from surviving facts.
 // ---------------------------------------------------------------------------
-async function groundedResearch(env, companyName, pdfText) {
+async function groundedResearch(env, geminiKey, companyName, pdfText) {
   // Authoritative board comes from the uploaded filing, not noisy web snippets.
-  const board = await extractBoardFromPdf(env, pdfText);
-  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, companyName, board);
+  const board = await extractBoardFromPdf(env, geminiKey, pdfText);
+  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, geminiKey, companyName, board);
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
     return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via, promoters, independents };
 
-  const { kept, dropped, reasons } = gate(await extractFacts(env, sources), sources);
+  const { kept, dropped, reasons } = gate(await extractFacts(env, geminiKey, sources), sources);
   console.log('GATE kept:', kept.length, 'dropped:', dropped.length, 'reasons:', JSON.stringify(reasons));
 
   if (kept.length === 0)
