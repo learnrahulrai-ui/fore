@@ -262,7 +262,17 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
   const reqBody = {
     system_instruction: { parts: [{ text: system || '' }] },
     contents: [{ role: 'user', parts: [{ text: user.slice(0, 24000) }] }],
-    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.2 },
+    generationConfig: {
+      maxOutputTokens: maxTokens,
+      temperature: 0.2,
+      // gemini-2.5-flash "thinks" before it answers, and those hidden reasoning
+      // tokens are drawn from maxOutputTokens. On a tiny budget (the YES/NO gate
+      // uses 4) thinking consumes the WHOLE allowance and the visible answer
+      // comes back EMPTY — which is exactly why a real financial PDF was being
+      // rejected. Default thinking OFF: faster, cheaper, predictable. Callers
+      // that want reasoning pass opts.think (a token budget).
+      thinkingConfig: { thinkingBudget: opts.think || 0 },
+    },
   };
   // Google Search grounding: the model searches the live web (filings, news,
   // exchange disclosures) while it answers and returns citations. WHAT it hunts
@@ -293,11 +303,15 @@ async function aiText(env, geminiKey, system, user, maxTokens) {
 }
 
 // Gate: is this a financial / corporate-disclosure document at all?
+// Fails OPEN — if the classifier returns nothing usable we let the upload
+// through rather than wrongly blocking a real filing. Only an explicit NO stops it.
 async function isFinancialPdf(env, geminiKey, sample) {
   const out = await aiText(env, geminiKey,
     'You are a strict classifier. Decide if the text is from a FINANCIAL or CORPORATE-DISCLOSURE document of a company — e.g. annual report, quarterly/financial results, balance sheet or profit-and-loss, prospectus or DRHP/RHP, shareholding pattern, investor presentation, earnings-call transcript, credit-rating rationale, or a stock-exchange filing. Reply with ONLY one word: YES or NO.',
-    sample.slice(0, 4000), 4);
-  return /\byes\b/i.test(out);
+    sample.slice(0, 4000), 8);
+  const v = (out || '').trim();
+  if (/\bno\b/i.test(v) && !/\byes\b/i.test(v)) return false; // explicit reject
+  return true; // YES, or empty/ambiguous -> let it through
 }
 
 async function extractCompanyName(env, geminiKey, headText) {
