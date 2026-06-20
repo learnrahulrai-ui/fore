@@ -227,7 +227,7 @@ export default {
       }
 
       // --- Step 3: condense into the final report ---
-      const report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 1024);
+      let report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 1024);
 
       // Leak-guard: if the output contains verbatim text from the secret system
       // prompts (injection via crafted PDF content), replace with a refusal.
