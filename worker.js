@@ -105,7 +105,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, rev: 2, edge_cache: true, placement: 'smart' });
+      return json({ ok: true, model: GEMINI_MODEL, rev: 3, edge_cache: true, placement: 'smart' });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -520,9 +520,18 @@ async function extractKeyPeople(env, geminiKey, sources) {
 async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   const sources = {};
   const searchHits = [];
-  const seen = new Set();   // dedupe identical URLs across the ~26 queries
+  const seen = new Set();   // dedupe identical URLs across queries
+  // Cloudflare's FREE tier caps one worker invocation at 50 subrequests. Serper
+  // + Jina (4) + the ~6 Gemini steps must all fit under it, so the Serper calls
+  // get a hard budget. Queries are issued highest-value-first, so if the budget
+  // runs out it's the least-important tail (broker/IR) that gets dropped — never
+  // the PDF disclosures or promoter trails.
+  let budget = 30;
   const runAll = async (queries) => {
-    const perQuery = await Promise.all(queries.map(async q => {
+    if (budget <= 0) return;
+    const slice = queries.slice(0, budget);
+    budget -= slice.length;
+    const perQuery = await Promise.all(slice.map(async q => {
       try { return { q, hits: await serperSearch(q, key) }; }
       catch { return { q, hits: [] }; }
     }));
@@ -549,14 +558,16 @@ async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   }
   console.log('PEOPLE:', JSON.stringify({ promoters, independents }));
 
-  // Phase 2: promoters + independents + disclosures + buckets + IR + layering.
+  // Phase 2: HIGHEST forensic value first — PDF disclosures (pledges, OFS,
+  // warrants, related-party loans) and promoter trails — so the subrequest
+  // budget is spent where the real signal is; the softer queries fill the rest.
   await runAll([
-    ...promoterQueries(companyName, promoters),
-    ...independentQueries(companyName, independents),
-    ...disclosureQueries(companyName),
+    ...disclosureQueries(companyName),                  // PDF filings — the gold
+    ...promoterQueries(companyName, promoters),         // tricks filed under names
+    ...layeringQueries(companyName, promoters),         // other entities they run
+    ...independentQueries(companyName, independents),   // capture risk
     ...bucketQueries(companyName),
     ...irQueries(companyName),
-    ...layeringQueries(companyName, promoters),
     ...brokerQueries(companyName),
   ]);
 
@@ -639,7 +650,7 @@ function enrichScore(s) {
   return n;
 }
 
-async function enrichWithFullText(env, sources, limit = 6) {
+async function enrichWithFullText(env, sources, limit = 4) {  // 4 to stay under the 50-subrequest free-tier cap
   const picks = Object.values(sources)
     .sort((a, b) => enrichScore(b) - enrichScore(a))
     .slice(0, limit);
