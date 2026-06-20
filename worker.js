@@ -139,13 +139,13 @@ export default {
 
       // --- Step 1: grounded research (cache-first; "fresh" bypasses the read) ---
       const skipCache = body.fresh === true;
-      let research, sources, droppedCount, dropReasons, searchHits, via, promoters = [], independents = [], fromCache = false;
+      let research, sources, droppedCount, dropReasons, enriched, searchHits, via, promoters = [], independents = [], fromCache = false;
 
       if (!skipCache && cacheKey !== 'co_' && env.COMPANY_CACHE) {
         try {
           const cached = await env.COMPANY_CACHE.get(cacheKey, 'json');
           if (cached && cached.research !== undefined) {
-            ({ research, sources, droppedCount, dropReasons, searchHits, via } = cached);
+            ({ research, sources, droppedCount, dropReasons, enriched, searchHits, via } = cached);
             promoters = cached.promoters || [];
             independents = cached.independents || [];
             fromCache = true;
@@ -157,12 +157,12 @@ export default {
       if (research === undefined) {
         const r = await groundedResearch(env, geminiKey, companyName, pdfText);
         research = r.research; sources = r.sources;
-        droppedCount = r.dropped; dropReasons = r.dropReasons; searchHits = r.searchHits; via = r.via;
+        droppedCount = r.dropped; dropReasons = r.dropReasons; enriched = r.enriched; searchHits = r.searchHits; via = r.via;
         promoters = r.promoters || [];
         independents = r.independents || [];
         if (cacheKey !== 'co_' && env.COMPANY_CACHE) {
           await env.COMPANY_CACHE.put(cacheKey,
-            JSON.stringify({ research, sources, droppedCount, dropReasons, searchHits, via, promoters, independents }),
+            JSON.stringify({ research, sources, droppedCount, dropReasons, enriched, searchHits, via, promoters, independents }),
             { expirationTtl: 2592000 });
         }
       }
@@ -173,9 +173,11 @@ export default {
         promoters,
         independents,
         search_via: via,
+        full_text_fetched: enriched || 0,   // how many sources Jina read in full
         drop_reasons: dropReasons || {},
         has_user_key: !!geminiKey,      // boolean only — never the key value
         has_serper_key: !!env.SERPER_API_KEY,
+        has_jina_key: !!env.JINA_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
         has_prompt_3: !!env.SYSTEM_PROMPT_3,
       };
@@ -554,6 +556,53 @@ async function fetchSources(env, geminiKey, companyName, board) {
 }
 
 // ---------------------------------------------------------------------------
+// 1b. FULL-TEXT ENRICHMENT — Serper returns one-line snippets, but the real
+// numbers (pledge %, off-market size, related-party loan amount, who got the
+// warrants) live INSIDE the linked filing. Jina Reader (r.jina.ai) turns any
+// page OR pdf into plain text — free, keyless — so the extractor has real
+// documents to quote from instead of a single sentence. Does NOT touch the
+// user's Gemini quota.
+// ---------------------------------------------------------------------------
+async function jinaFetch(url, env) {
+  try {
+    const headers = { 'Accept': 'text/plain', 'X-Return-Format': 'text' };
+    if (env.JINA_API_KEY) headers['Authorization'] = `Bearer ${env.JINA_API_KEY}`; // higher limits if set
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch('https://r.jina.ai/' + url, { headers, signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return '';
+    const txt = await res.text();
+    return txt.replace(/\s+/g, ' ').trim();
+  } catch { return ''; }
+}
+
+// Rank by how likely a URL is to be a real filing, then read the top few.
+function enrichScore(s) {
+  let n = 0;
+  if (/\.pdf(\?|$)/i.test(s.url)) n += 3;   // a filing PDF — the gold
+  if (s.trust === 'primary')     n += 2;    // sebi/nse/bse/mca/...
+  if (s.trust === 'reference')   n += 1;
+  return n;
+}
+
+async function enrichWithFullText(env, sources, limit = 6) {
+  const picks = Object.values(sources)
+    .sort((a, b) => enrichScore(b) - enrichScore(a))
+    .slice(0, limit);
+  let enriched = 0;
+  await Promise.all(picks.map(async s => {
+    const full = await jinaFetch(s.url, env);
+    if (full && full.length > s.text.length) {
+      s.text = full.slice(0, 4000);   // cap so one PDF can't dominate context
+      s.full = true;
+      enriched++;
+    }
+  }));
+  return enriched;
+}
+
+// ---------------------------------------------------------------------------
 // 2. EXTRACTION — model returns facts, each WITH a verbatim quote + source id.
 // ---------------------------------------------------------------------------
 const EXTRACT_PROMPT = `You are given SOURCES: real search-result text we fetched. Extract the FIELDS.
@@ -599,10 +648,14 @@ SOURCES:
 `;
 
 async function extractFacts(env, geminiKey, sources) {
-  // Cap input so a big query set can't overflow the model context.
-  const ids = Object.keys(sources).slice(0, 40);
-  if (ids.length === 0) return [];
-  const blob = ids.map(id => `[${id}] ${sources[id].url}\n${sources[id].text.slice(0, 600)}`).join('\n\n');
+  const all = Object.values(sources);
+  if (all.length === 0) return [];
+  // Full-text (Jina-enriched) sources first — they hold the quotable detail, so
+  // give them a big slice; snippets get a small one. Cap total for context.
+  all.sort((a, b) => (b.full ? 1 : 0) - (a.full ? 1 : 0));
+  const blob = all.slice(0, 30)
+    .map(s => `[${s.id}] ${s.url}\n${s.text.slice(0, s.full ? 2000 : 500)}`)
+    .join('\n\n');
   const out = await aiText(env, geminiKey,
     'You extract only facts present verbatim in the provided sources. You never invent.',
     EXTRACT_PROMPT + blob, 2000);
@@ -680,13 +733,17 @@ async function groundedResearch(env, geminiKey, companyName, pdfText) {
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
-    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, searchHits, via, promoters, independents };
+    return { research: 'No public source could be retrieved for this company.', sources: [], dropped: 0, enriched: 0, searchHits, via, promoters, independents };
+
+  // Read the top filings in full (Jina) so the extractor can quote real numbers.
+  const enriched = await enrichWithFullText(env, sources);
+  console.log('JINA enriched:', enriched, 'of', Object.keys(sources).length);
 
   const { kept, dropped, reasons } = gate(await extractFacts(env, geminiKey, sources), sources);
   console.log('GATE kept:', kept.length, 'dropped:', dropped.length, 'reasons:', JSON.stringify(reasons));
 
   if (kept.length === 0)
-    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, dropReasons: reasons, searchHits, via, promoters, independents };
+    return { research: 'No verifiable facts survived source-checking.', sources: sourceList, dropped: dropped.length, enriched, dropReasons: reasons, searchHits, via, promoters, independents };
 
   const byField = {};
   for (const f of kept) (byField[f.field] = byField[f.field] || []).push(f);
@@ -696,5 +753,5 @@ async function groundedResearch(env, geminiKey, companyName, pdfText) {
     research += `\n## ${field}\n`;
     for (const f of byField[field]) research += `- ${f.value}  [${sources[f.source_id].url}]\n`;
   }
-  return { research: research.trim(), sources: sourceList, dropped: dropped.length, dropReasons: reasons, searchHits, via, promoters, independents };
+  return { research: research.trim(), sources: sourceList, dropped: dropped.length, enriched, dropReasons: reasons, searchHits, via, promoters, independents };
 }
