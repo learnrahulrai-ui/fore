@@ -7,6 +7,13 @@ name = "firstfor"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
+# Smart Placement (free): this worker is upstream-bound — it spends its time
+# calling Gemini / Serper / Jina, not talking to the browser. Cloudflare runs
+# it in a colo near those backends, and only relocates when that actually cuts
+# latency. Pure win for an I/O-bound worker.
+[placement]
+mode = "smart"
+
 # Workers AI  -> env.AI
 [ai]
 binding = "AI"

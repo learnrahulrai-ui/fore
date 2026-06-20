@@ -436,7 +436,33 @@ function brokerQueries(company) {
   ];
 }
 
+// ---------------------------------------------------------------------------
+// Edge cache (Cloudflare Cache API, caches.default) — free, colo-local, no
+// quota and no write limit. We cache idempotent upstream reads: Serper results
+// and Jina full-text. Best-effort: if the platform ever no-ops it the code
+// still works, just slower. The synthetic key URL is never fetched and never
+// leaves the worker, so the secret trick-queries used as keys stay secret.
+// ---------------------------------------------------------------------------
+const EDGE = 'https://fore.cache/';
+async function edgeGet(key) {
+  try {
+    const r = await caches.default.match(new Request(EDGE + encodeURIComponent(key)));
+    return r ? await r.text() : null;
+  } catch { return null; }
+}
+async function edgePut(key, text, ttl = 86400) {
+  try {
+    await caches.default.put(
+      new Request(EDGE + encodeURIComponent(key)),
+      new Response(text, { headers: { 'Cache-Control': 'max-age=' + ttl } }),
+    );
+  } catch { /* best-effort */ }
+}
+
 async function serperSearch(query, key) {
+  const ck = 'serper:' + query;
+  const hit = await edgeGet(ck);
+  if (hit) { try { return JSON.parse(hit); } catch { /* stale -> refetch */ } }
   const res = await fetch(SERPER_ENDPOINT, {
     method: 'POST',
     headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
@@ -445,9 +471,11 @@ async function serperSearch(query, key) {
   if (!res.ok) return [];
   const data = await res.json();
   const results = data?.organic ?? [];
-  return results.map(r => ({
+  const mapped = results.map(r => ({
     url: r.link, title: r.title || '', text: r.snippet || '',
   })).filter(r => r.url && r.text && r.text.length > 30);
+  if (mapped.length) await edgePut(ck, JSON.stringify(mapped)); // real hits only, ~1 day
+  return mapped;
 }
 
 // Authoritative board roster comes from the UPLOADED filing, not noisy web
@@ -577,6 +605,9 @@ async function fetchSources(env, geminiKey, companyName, board) {
 // user's Gemini quota.
 // ---------------------------------------------------------------------------
 async function jinaFetch(url, env) {
+  const ck = 'jina:' + url;
+  const hit = await edgeGet(ck);
+  if (hit) return hit;                 // filing text is static — instant on repeat
   try {
     const headers = { 'Accept': 'text/plain', 'X-Return-Format': 'text' };
     if (env.JINA_API_KEY) headers['Authorization'] = `Bearer ${env.JINA_API_KEY}`; // higher limits if set
@@ -586,7 +617,9 @@ async function jinaFetch(url, env) {
     clearTimeout(timer);
     if (!res.ok) return '';
     const txt = await res.text();
-    return txt.replace(/\s+/g, ' ').trim();
+    const clean = txt.replace(/\s+/g, ' ').trim();
+    if (clean) await edgePut(ck, clean, 604800);   // filings don't change — 7 days
+    return clean;
   } catch { return ''; }
 }
 
