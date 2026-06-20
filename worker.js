@@ -113,7 +113,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 6, edge_cache: true, placement: 'smart', ocr: true });
+      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 7, edge_cache: true, placement: 'smart', ocr: true });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -518,6 +518,30 @@ function brokerQueries(company) {
   ];
 }
 
+// PHASE 2h — SUBSIDIARY IPO FORENSICS. The single most lucrative promoter cash
+// extraction event in the Indian market is an OFS in a subsidiary IPO: the
+// promoter pays founding-price for shares, third-party investors bid it up, the
+// IPO price is set, the promoter dumps shares via OFS and walks away with the
+// markup. We hunt the DRHP/RHP (which lists every selling shareholder and their
+// OFS size), pre-IPO funding rounds (who came in at what price), and the
+// promoter family's holding structure (family office, trust, holding company)
+// that sits above the subsidiary.
+function ipoSubsidiaryQueries(company, promoters) {
+  const c = `"${company}"`;
+  const qs = [
+    // DRHP / RHP of a subsidiary — the gold document: lists all selling shareholders, OFS size, price band.
+    applyPdf(`${c} (subsidiary OR group) (DRHP OR RHP OR prospectus) ("offer for sale" OR "selling shareholder" OR OFS) filetype:pdf`),
+    // Pre-IPO rounds: who came in at what valuation, who is a PE/VC; sets the baseline cost vs IPO price.
+    applyPdf(`${c} (subsidiary OR group) ("pre-IPO" OR "series" OR "round" OR "funding round") (investors OR valuation OR stake) filetype:pdf`),
+    // Open-web announcement of upcoming subsidiary IPO.
+    applyOpen(`${c} subsidiary IPO listing (SEBI OR NSE OR BSE) "offer for sale" promoter`),
+    // Promoter family holdco / trust that will actually receive the OFS proceeds.
+    ...promoters.slice(0, 2).map(p =>
+      applyOpen(`"${p}" "${company}" ("family office" OR trust OR holdco OR "holding company") subsidiary IPO stake`)),
+  ];
+  return qs;
+}
+
 // ---------------------------------------------------------------------------
 // Edge cache (Cloudflare Cache API, caches.default) — free, colo-local, no
 // quota and no write limit. We cache idempotent upstream reads: Serper results
@@ -585,8 +609,8 @@ async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   // + Jina (4) + the ~6 Gemini steps must all fit under it, so the Serper calls
   // get a hard budget. Queries are issued highest-value-first, so if the budget
   // runs out it's the least-important tail (broker/IR) that gets dropped — never
-  // the PDF disclosures or promoter trails.
-  let budget = 24;
+  // the PDF disclosures, IPO forensics, or promoter trails.
+  let budget = 28;
   const runAll = async (queries) => {
     if (budget <= 0) return;
     const slice = queries.slice(0, budget);
@@ -622,10 +646,11 @@ async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   // warrants, related-party loans) and promoter trails — so the subrequest
   // budget is spent where the real signal is; the softer queries fill the rest.
   await runAll([
-    ...disclosureQueries(companyName),                  // PDF filings — the gold
-    ...promoterQueries(companyName, promoters),         // tricks filed under names
-    ...layeringQueries(companyName, promoters),         // other entities they run
-    ...independentQueries(companyName, independents),   // capture risk
+    ...disclosureQueries(companyName),                       // PDF filings — the gold
+    ...ipoSubsidiaryQueries(companyName, promoters),         // subsidiary IPO: OFS cashout, pre-IPO rounds
+    ...promoterQueries(companyName, promoters),              // tricks filed under names
+    ...layeringQueries(companyName, promoters),              // other entities they run
+    ...independentQueries(companyName, independents),        // capture risk
     ...bucketQueries(companyName),
     ...irQueries(companyName),
     ...brokerQueries(companyName),
@@ -790,6 +815,20 @@ FIELDS:
 - overseas_subsidiaries (foreign/overseas subsidiary incorporated or acquired, an
   overseas acquisition — especially of a loss-making/near-bankrupt target — and who
   leads it (promoter family placed abroad); one row each, include entity and country)
+- subsidiary_ipo (upcoming or recent IPO of a subsidiary; SEBI filing or exchange
+  announcement; entity name; fresh issue vs OFS split; price band; valuation; list of
+  all selling shareholders; one row each, format "entity: <detail>")
+- promoter_ipo_cashout (promoter or promoter group selling via OFS in a subsidiary IPO
+  — number of shares offered × price band = cash taken home; total OFS consideration;
+  one row each — include subsidiary name, seller name, shares, price, implied proceeds)
+- promoter_cost_basis (what the promoter originally paid to acquire shares in the
+  subsidiary — founding price, rights subscription price, preferential allotment price,
+  or pre-IPO round price — compared with the IPO price; implied gain multiple;
+  one row each — include subsidiary, cost price, IPO/current price, gain)
+- family_holdco_cashflow (cash flowing to the promoter's family holding company, trust,
+  family office, or associated private entity — management fees, brand royalties,
+  advisory fees, guaranteed interest on inter-corporate deposits, trademark fees, or
+  upstream dividends from a subsidiary; one row each — include entity, amount, and type)
 
 SOURCES:
 `;
