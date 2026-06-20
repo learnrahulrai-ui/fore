@@ -105,14 +105,17 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, rev: 3, edge_cache: true, placement: 'smart' });
+      return json({ ok: true, model: GEMINI_MODEL, rev: 4, edge_cache: true, placement: 'smart', ocr: true });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
     let body;
     try { body = await request.json(); }
     catch { return json({ error: 'Invalid JSON' }, 400); }
-    if (!body.text) return json({ error: 'Missing text' }, 400);
+    // Normally the browser sends extracted text. For a scanned/image PDF it
+    // sends page images instead (body.images) for OCR — so accept either.
+    const hasImages = Array.isArray(body.images) && body.images.length > 0;
+    if (!body.text && !hasImages) return json({ error: 'Missing text' }, 400);
 
     // The user brings their own Gemini key. We use it once, in-memory, for this
     // request only. It is NEVER written to a log line, the KV cache, or the
@@ -123,10 +126,24 @@ export default {
     }
 
     try {
-      const pdfText = body.text;
+      let pdfText = body.text || '';
       // Name comes from the document head (cover page), sent separately by the
       // browser — the analysis chunk skips the first 30% and would miss it.
-      const headText = body.head || pdfText.slice(0, 2000);
+      let headText = body.head || pdfText.slice(0, 2000);
+
+      // OCR fallback: a scanned/image PDF (common for older or regional Indian
+      // filings) yields little or no text in the browser, so PDF.js sends the
+      // first pages as images instead. We transcribe them with the user's own
+      // Gemini key, then run the entire normal pipeline on the recovered text.
+      // Native-text PDFs never enter this branch, so normal filings pay nothing.
+      const thin = pdfText.replace(/\s+/g, '').length < 200;
+      if (hasImages && thin) {
+        pdfText = await geminiOcr(geminiKey, body.images);
+        headText = pdfText.slice(0, 2000);
+        if (pdfText.replace(/\s+/g, '').length < 100) {
+          return json({ error: 'Could not read text from this PDF, even by OCR. It may be encrypted, blank, or too low-resolution.' }, 400);
+        }
+      }
 
       // Gate 1: is this even a financial document? Cheap one-word classify on
       // the user's key. Saves their quota on the heavy steps if it's the wrong
@@ -297,6 +314,31 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
   const d = await res.json();
   const parts = d.candidates?.[0]?.content?.parts || [];
   return parts.map(p => p.text || '').join('').trim();
+}
+
+// Vision OCR for scanned/image PDFs. One multimodal Gemini call on the user's
+// key: page images in, plain transcribed text out. thinkingLevel 'minimal'
+// (transcription needs no reasoning) and temperature 0 for fidelity. Capped at
+// 15 pages to stay cheap and within the free tier.
+async function geminiOcr(key, images) {
+  const parts = images.slice(0, 15).map(b64 => ({
+    inline_data: { mime_type: 'image/jpeg', data: b64 },
+  }));
+  parts.push({ text: 'Transcribe ALL text from these document page images, in reading order, as plain text. Preserve every number, name and date; render tables as readable rows. Do not summarize, translate, comment, or add anything — output only the transcribed text.' });
+  const res = await fetch(`${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0, thinkingConfig: { thinkingLevel: 'minimal' } },
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error('Gemini OCR: ' + (e.error?.message || res.statusText));
+  }
+  const d = await res.json();
+  return (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
 }
 
 // Unified text-generation call. With a user Gemini key (the normal path) every

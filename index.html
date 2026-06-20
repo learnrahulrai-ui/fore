@@ -13,7 +13,8 @@
 <p>
   Upload a company financial PDF &mdash; annual report, quarterly results, prospectus/DRHP,
   shareholding disclosure, investor presentation, or an exchange filing. The file is read
-  in your browser; only the extracted text is sent for analysis.
+  in your browser; only the extracted text is sent for analysis. If the PDF is a scan
+  (no selectable text), its first pages are sent as images and read by OCR using your own key.
 </p>
 
 <p>
@@ -88,10 +89,12 @@
   const apiKeyEl = document.getElementById('api-key');
   let extractedText = '';
   let headText = '';
+  let pageImages = [];   // set only for scanned PDFs (sent for OCR)
 
-  // Analyze is allowed only once we have BOTH a parsed PDF and a key.
+  // Analyze is allowed once we have a key AND either extracted text or, for a
+  // scanned PDF, rendered page images.
   function checkReady() {
-    analyzeBtn.disabled = !(extractedText && apiKeyEl.value.trim());
+    analyzeBtn.disabled = !((extractedText || pageImages.length) && apiKeyEl.value.trim());
   }
   apiKeyEl.addEventListener('input', checkReady);
 
@@ -118,6 +121,7 @@
 
   async function extractText(file) {
     try {
+      pageImages = [];
       const buf = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
       const parts = [];
@@ -128,6 +132,20 @@
       }
       const MAX_CHARS = 20000;
       const full = parts.join('\n\n').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+
+      // Scanned/image PDF? Too little selectable text for the page count. Render
+      // the first pages to images so the worker can OCR them with your key.
+      const compact = full.replace(/\s+/g, '').length;
+      if (compact < pdf.numPages * 50) {
+        extractedText = ''; headText = '';
+        fileStatus.textContent = 'Scanned PDF detected — rendering pages for OCR...';
+        pageImages = await renderPages(pdf, 12);
+        fileStatus.textContent = pdf.numPages + ' page(s); scanned — ' + pageImages.length +
+          ' page image(s) ready, will OCR with your key on Analyze.';
+        checkReady();
+        return;
+      }
+
       const start = Math.floor(full.length * 0.30);
       extractedText = full.slice(start, start + MAX_CHARS);
       headText = full.slice(0, 2000); // cover page, for company-name detection
@@ -138,10 +156,28 @@
     }
   }
 
+  // Render the first pages to JPEG, return raw base64 (no data: prefix). Used
+  // only for scanned PDFs, where there is no text layer to extract.
+  async function renderPages(pdf, maxPages) {
+    const imgs = [];
+    const n = Math.min(pdf.numPages, maxPages);
+    for (let i = 1; i <= n; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      imgs.push(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]);
+      fileStatus.textContent = 'Rendering page ' + i + ' of ' + n + ' for OCR...';
+    }
+    return imgs;
+  }
+
   analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true;
     resultsEl.style.display = 'none';
-    statusEl.textContent = 'Searching the web, checking facts, analyzing... (may take 1-3 minutes)';
+    statusEl.textContent = (pageImages.length ? 'OCR-reading the scan, then s' : 'S') +
+      'earching the web, checking facts, analyzing... (may take 1-3 minutes)';
 
     try {
       const res = await fetch(WORKER_URL, {
@@ -150,6 +186,7 @@
         body: JSON.stringify({
           text: extractedText,
           head: headText,
+          images: pageImages,
           fresh: freshEl.checked,
           geminiKey: apiKeyEl.value.trim(),
         }),
