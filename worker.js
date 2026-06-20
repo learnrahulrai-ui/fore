@@ -105,7 +105,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, edge_cache: true, placement: 'smart' });
+      return json({ ok: true, model: GEMINI_MODEL, rev: 2, edge_cache: true, placement: 'smart' });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -271,12 +271,13 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.2,
-      // Gemini 3 replaced 2.5's numeric thinkingBudget with thinking_level
-      // (minimal | low | medium | high). On 2.5 the hidden reasoning tokens were
-      // drawn from maxOutputTokens, so a tiny budget (the YES/NO gate) came back
-      // EMPTY and wrongly rejected real filings. Default 'low' = fast + cheap,
-      // right for the mechanical calls; the forensic analysis passes 'medium'.
-      thinking_level: opts.think || 'low',
+      // Gemini 3 replaced 2.5's numeric thinkingBudget with thinkingLevel
+      // (minimal | low | medium | high), nested under thinkingConfig in the REST
+      // API (a flat thinking_level is rejected). On 2.5 hidden reasoning tokens
+      // were drawn from maxOutputTokens, so a tiny budget (the YES/NO gate) came
+      // back EMPTY and wrongly rejected real filings. Default 'low' = fast/cheap
+      // for the mechanical calls; the forensic analysis passes 'medium'.
+      thinkingConfig: { thinkingLevel: opts.think || 'low' },
     },
   };
   // Google Search grounding: the model searches the live web (filings, news,
