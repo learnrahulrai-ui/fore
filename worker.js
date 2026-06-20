@@ -36,11 +36,11 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile';
 // Cloudflare neuron budget and never has to pay for anyone's analysis. The key
 // arrives per-request, is used once, and is NEVER logged, cached, or stored.
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-// Each model has its OWN free-tier quota bucket. If one shows "limit: 0" the
-// key's project may have free tier disabled — but trying a different model can
-// also dodge a model-specific zero. 2.5-flash is current and reasons better
-// for promoter forensics than 2.0. (2.5-flash-lite has the highest free RPD.)
-const GEMINI_MODEL = 'gemini-2.5-flash';
+// Each model has its OWN free-tier quota bucket. We use Gemini 3.5 Flash — the
+// latest GA Flash model (May 2026), free tier, best reasoning of the free Flash
+// options. If a key ever shows "limit: 0"/no access, the doc-confirmed free
+// fallback is 'gemini-3-flash-preview'. (gemini-3.1-flash-lite = highest RPD.)
+const GEMINI_MODEL = 'gemini-3.5-flash';
 
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
@@ -190,7 +190,7 @@ export default {
       const analysisInput = `VERIFIED COMPANY FACTS:\n${research}\n\nDOCUMENT:\n${pdfText}`;
       let analysis;
       try {
-        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048, { grounded: true });
+        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048, { grounded: true, think: 'medium' });
       } catch {
         analysis = await aiText(env, geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048);
       }
@@ -265,13 +265,12 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.2,
-      // gemini-2.5-flash "thinks" before it answers, and those hidden reasoning
-      // tokens are drawn from maxOutputTokens. On a tiny budget (the YES/NO gate
-      // uses 4) thinking consumes the WHOLE allowance and the visible answer
-      // comes back EMPTY — which is exactly why a real financial PDF was being
-      // rejected. Default thinking OFF: faster, cheaper, predictable. Callers
-      // that want reasoning pass opts.think (a token budget).
-      thinkingConfig: { thinkingBudget: opts.think || 0 },
+      // Gemini 3 replaced 2.5's numeric thinkingBudget with thinking_level
+      // (minimal | low | medium | high). On 2.5 the hidden reasoning tokens were
+      // drawn from maxOutputTokens, so a tiny budget (the YES/NO gate) came back
+      // EMPTY and wrongly rejected real filings. Default 'low' = fast + cheap,
+      // right for the mechanical calls; the forensic analysis passes 'medium'.
+      thinking_level: opts.think || 'low',
     },
   };
   // Google Search grounding: the model searches the live web (filings, news,
@@ -296,8 +295,8 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
 // Unified text-generation call. With a user Gemini key (the normal path) every
 // model step runs on the user's key/quota. Groq/CF remain only as a fallback so
 // the owner could still run it key-less for testing.
-async function aiText(env, geminiKey, system, user, maxTokens) {
-  if (geminiKey) return runGemini(geminiKey, system, user, maxTokens);
+async function aiText(env, geminiKey, system, user, maxTokens, opts = {}) {
+  if (geminiKey) return runGemini(geminiKey, system, user, maxTokens, opts);
   if (env.GROQ_API_KEY) return runGroq(env.GROQ_API_KEY, system, user, maxTokens);
   return runCF(env, FAST_MODEL, system, user, maxTokens);
 }
@@ -308,7 +307,7 @@ async function aiText(env, geminiKey, system, user, maxTokens) {
 async function isFinancialPdf(env, geminiKey, sample) {
   const out = await aiText(env, geminiKey,
     'You are a strict classifier. Decide if the text is from a FINANCIAL or CORPORATE-DISCLOSURE document of a company — e.g. annual report, quarterly/financial results, balance sheet or profit-and-loss, prospectus or DRHP/RHP, shareholding pattern, investor presentation, earnings-call transcript, credit-rating rationale, or a stock-exchange filing. Reply with ONLY one word: YES or NO.',
-    sample.slice(0, 4000), 8);
+    sample.slice(0, 4000), 8, { think: 'minimal' });
   const v = (out || '').trim();
   if (/\bno\b/i.test(v) && !/\byes\b/i.test(v)) return false; // explicit reject
   return true; // YES, or empty/ambiguous -> let it through
@@ -317,7 +316,7 @@ async function isFinancialPdf(env, geminiKey, sample) {
 async function extractCompanyName(env, geminiKey, headText) {
   const out = await aiText(env, geminiKey,
     'You are given the opening text of a financial document (cover/first page). Return the issuing company\'s name exactly as printed, including "Limited"/"Ltd" if shown (e.g. "Asian Paints Limited"). Reply with ONLY the name — no quotes, no extra words.',
-    headText.slice(0, 1500), 30);
+    headText.slice(0, 1500), 30, { think: 'minimal' });
   return out.trim().replace(/^["']+|["']+$/g, '');
 }
 
