@@ -41,6 +41,10 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 // options. If a key ever shows "limit: 0"/no access, the doc-confirmed free
 // fallback is 'gemini-3-flash-preview'. (gemini-3.1-flash-lite = highest RPD.)
 const GEMINI_MODEL = 'gemini-3.5-flash';
+// When the primary is overloaded (503 "high demand" — the newest model draws
+// the most traffic and free-tier requests are shed first), we retry on this
+// less-loaded free Gemini 3 model so the user still gets a result.
+const GEMINI_FALLBACK_MODEL = 'gemini-3-flash-preview';
 
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
@@ -105,7 +109,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, rev: 4, edge_cache: true, placement: 'smart', ocr: true });
+      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, rev: 5, edge_cache: true, placement: 'smart', ocr: true });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -145,18 +149,18 @@ export default {
         }
       }
 
-      // Gate 1: is this even a financial document? Cheap one-word classify on
-      // the user's key. Saves their quota on the heavy steps if it's the wrong
-      // file, and tells them plainly.
-      const looksFinancial = await isFinancialPdf(env, geminiKey, headText + '\n' + pdfText.slice(0, 3000));
-      if (!looksFinancial) {
+      // ONE call: is it financial + the company name + the board (promoters /
+      // independents) straight from the filing — merged from three separate
+      // calls to sip the free tier's ~20 generate_content/min budget.
+      const doc = await classifyDocument(env, geminiKey, headText, pdfText);
+      if (!doc.financial) {
         return json({
           financial: false,
           message: 'This does not look like a financial document. Please upload a company financial PDF — an annual report, quarterly results, prospectus/DRHP, shareholding disclosure, investor presentation, or an exchange filing.',
         });
       }
-
-      const companyName = await extractCompanyName(env, geminiKey, headText);
+      const companyName = doc.company;
+      const board = { promoters: doc.promoters, independents: doc.independents };
       const cacheKey = 'co_' + companyName.toLowerCase()
         .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 80);
 
@@ -178,7 +182,7 @@ export default {
       }
 
       if (research === undefined) {
-        const r = await groundedResearch(env, geminiKey, companyName, pdfText);
+        const r = await groundedResearch(env, geminiKey, companyName, pdfText, board);
         research = r.research; sources = r.sources;
         droppedCount = r.dropped; dropReasons = r.dropReasons; enriched = r.enriched; searchHits = r.searchHits; via = r.via;
         promoters = r.promoters || [];
@@ -279,8 +283,41 @@ async function runCF(env, model, system, user, maxTokens) {
   return (out.response ?? '').trim();
 }
 
-// Gemini path: the user's own key. Sent via the x-goog-api-key header (not the
-// URL) so the key never lands in any request line that might be logged upstream.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// One Gemini generateContent call, resilient to the free tier's two failure
+// modes:
+//   429 — "you exceeded your quota" (the free tier caps generate_content at
+//         ~20/min PER MODEL), and
+//   503 — "this model is experiencing high demand" (overload).
+// On either, we retry ONCE on a less-loaded fallback model. Crucially, EACH
+// model has its OWN free-tier bucket, so when the primary's 20/min is spent the
+// fallback still has headroom. 400/401/403 (bad request / bad key) are NOT
+// retried — they won't fix themselves and would just burn a subrequest. The key
+// travels in the x-goog-api-key header, never the URL.
+async function geminiCall(key, reqBody, attempts = 2) {
+  const chain = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL];
+  let lastErr = '';
+  for (let i = 0; i < attempts; i++) {
+    const model = chain[Math.min(i, chain.length - 1)];
+    const res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify(reqBody),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      return (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+    }
+    const e = await res.json().catch(() => ({}));
+    lastErr = e.error?.message || res.statusText;          // never echoes the key
+    if (![429, 500, 503].includes(res.status) || i === attempts - 1) break;
+    await sleep(1500);                                      // brief pause, then the fallback model
+  }
+  throw new Error('Gemini API: ' + lastErr);
+}
+
+// Gemini text path: the user's own key/quota.
 async function runGemini(key, system, user, maxTokens, opts = {}) {
   const reqBody = {
     system_instruction: { parts: [{ text: system || '' }] },
@@ -288,32 +325,16 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.2,
-      // Gemini 3 replaced 2.5's numeric thinkingBudget with thinkingLevel
-      // (minimal | low | medium | high), nested under thinkingConfig in the REST
-      // API (a flat thinking_level is rejected). On 2.5 hidden reasoning tokens
-      // were drawn from maxOutputTokens, so a tiny budget (the YES/NO gate) came
-      // back EMPTY and wrongly rejected real filings. Default 'low' = fast/cheap
-      // for the mechanical calls; the forensic analysis passes 'medium'.
+      // Gemini 3 uses thinkingConfig.thinkingLevel (minimal|low|medium|high);
+      // a flat thinking_level is rejected. Default 'low' = fast/cheap for the
+      // mechanical calls; the forensic analysis passes 'medium'.
       thinkingConfig: { thinkingLevel: opts.think || 'low' },
     },
   };
-  // Google Search grounding: the model searches the live web (filings, news,
-  // exchange disclosures) while it answers and returns citations. WHAT it hunts
-  // for is driven entirely by the secret system prompt.
+  // Google Search grounding: the model searches the live web while it answers;
+  // WHAT it hunts for is driven entirely by the secret system prompt.
   if (opts.grounded) reqBody.tools = [{ google_search: {} }];
-  const res = await fetch(`${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify(reqBody),
-  });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    // Surface key/quota errors to the user — but never echo the key.
-    throw new Error('Gemini API: ' + (e.error?.message || res.statusText));
-  }
-  const d = await res.json();
-  const parts = d.candidates?.[0]?.content?.parts || [];
-  return parts.map(p => p.text || '').join('').trim();
+  return geminiCall(key, reqBody);
 }
 
 // Vision OCR for scanned/image PDFs. One multimodal Gemini call on the user's
@@ -325,20 +346,10 @@ async function geminiOcr(key, images) {
     inline_data: { mime_type: 'image/jpeg', data: b64 },
   }));
   parts.push({ text: 'Transcribe ALL text from these document page images, in reading order, as plain text. Preserve every number, name and date; render tables as readable rows. Do not summarize, translate, comment, or add anything — output only the transcribed text.' });
-  const res = await fetch(`${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts }],
-      generationConfig: { maxOutputTokens: 8192, temperature: 0, thinkingConfig: { thinkingLevel: 'minimal' } },
-    }),
+  return geminiCall(key, {
+    contents: [{ role: 'user', parts }],
+    generationConfig: { maxOutputTokens: 8192, temperature: 0, thinkingConfig: { thinkingLevel: 'minimal' } },
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error('Gemini OCR: ' + (e.error?.message || res.statusText));
-  }
-  const d = await res.json();
-  return (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
 }
 
 // Unified text-generation call. With a user Gemini key (the normal path) every
@@ -350,23 +361,33 @@ async function aiText(env, geminiKey, system, user, maxTokens, opts = {}) {
   return runCF(env, FAST_MODEL, system, user, maxTokens);
 }
 
-// Gate: is this a financial / corporate-disclosure document at all?
-// Fails OPEN — if the classifier returns nothing usable we let the upload
-// through rather than wrongly blocking a real filing. Only an explicit NO stops it.
-async function isFinancialPdf(env, geminiKey, sample) {
+// ONE call does what used to be three (gate + company name + board roster).
+// Every saved call is headroom against the free tier's ~20 generate_content/min
+// cap. Fails OPEN on the gate (only an explicit financial:false blocks an
+// upload) so a parse miss never wrongly rejects a real filing.
+async function classifyDocument(env, geminiKey, headText, pdfText) {
+  const sample = (headText || '').slice(0, 2000) + '\n\n' + (pdfText || '').slice(0, 6000);
   const out = await aiText(env, geminiKey,
-    'You are a strict classifier. Decide if the text is from a FINANCIAL or CORPORATE-DISCLOSURE document of a company — e.g. annual report, quarterly/financial results, balance sheet or profit-and-loss, prospectus or DRHP/RHP, shareholding pattern, investor presentation, earnings-call transcript, credit-rating rationale, or a stock-exchange filing. Reply with ONLY one word: YES or NO.',
-    sample.slice(0, 4000), 8, { think: 'minimal' });
-  const v = (out || '').trim();
-  if (/\bno\b/i.test(v) && !/\byes\b/i.test(v)) return false; // explicit reject
-  return true; // YES, or empty/ambiguous -> let it through
-}
-
-async function extractCompanyName(env, geminiKey, headText) {
-  const out = await aiText(env, geminiKey,
-    'You are given the opening text of a financial document (cover/first page). Return the issuing company\'s name exactly as printed, including "Limited"/"Ltd" if shown (e.g. "Asian Paints Limited"). Reply with ONLY the name — no quotes, no extra words.',
-    headText.slice(0, 1500), 30, { think: 'minimal' });
-  return out.trim().replace(/^["']+|["']+$/g, '');
+    'You read the opening of a company document and return ONLY this JSON: ' +
+    '{"financial": true, "company": "", "promoters": [], "independents": []}. ' +
+    'financial = true if it is a company FINANCIAL or CORPORATE-DISCLOSURE document (annual report, quarterly/financial results, balance sheet or P&L, prospectus/DRHP/RHP, shareholding pattern, investor presentation, earnings-call transcript, credit-rating rationale, or a stock-exchange filing); otherwise false. ' +
+    'company = the issuing company name exactly as printed, including "Limited"/"Ltd" if shown; "" if unclear. ' +
+    'promoters = people on the BOARD who are promoters / executive / managing directors (max 4, full names). ' +
+    'independents = independent or non-executive directors (max 4, full names). ' +
+    'Exclude the Company Secretary, Compliance Officer, auditors, and any government minister mentioned ceremonially. Unknown list = [].',
+    sample, 300, { think: 'minimal' });
+  const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 4) : [];
+  try {
+    const o = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+    return {
+      financial: o.financial !== false,   // fail-open: only an explicit false blocks
+      company: String(o.company || '').trim().replace(/^["']+|["']+$/g, ''),
+      promoters: clean(o.promoters),
+      independents: clean(o.independents),
+    };
+  } catch {
+    return { financial: true, company: '', promoters: [], independents: [] };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -527,21 +548,6 @@ async function serperSearch(query, key) {
   return mapped;
 }
 
-// Authoritative board roster comes from the UPLOADED filing, not noisy web
-// snippets — the document literally lists its own directors + shareholdings.
-// Excludes the company secretary, auditors and ceremonial/ministerial mentions.
-async function extractBoardFromPdf(env, geminiKey, pdfText) {
-  if (!pdfText) return { promoters: [], independents: [] };
-  const s = await aiText(env, geminiKey,
-    'From this company filing, list the people on its BOARD OF DIRECTORS. Return ONLY JSON: {"promoters":["..."],"independents":["..."]}. promoters = promoters / executive / managing directors (max 4). independents = independent or non-executive directors (max 4). Full personal names only. Do NOT include the Company Secretary, Compliance Officer, auditors, or any government minister mentioned ceremonially. Unknown list = [].',
-    pdfText.slice(0, 6000), 200);
-  const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()).slice(0, 4) : [];
-  try {
-    const obj = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
-    return { promoters: clean(obj.promoters), independents: clean(obj.independents) };
-  } catch { return { promoters: [], independents: [] }; }
-}
-
 // Pull key people out of phase-1 snippets so phase 2 can search by person:
 // promoters (where insider/off-market trades live) and independent directors
 // (whose other boards + fees reveal capture).
@@ -568,7 +574,7 @@ async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   // get a hard budget. Queries are issued highest-value-first, so if the budget
   // runs out it's the least-important tail (broker/IR) that gets dropped — never
   // the PDF disclosures or promoter trails.
-  let budget = 30;
+  let budget = 24;
   const runAll = async (queries) => {
     if (budget <= 0) return;
     const slice = queries.slice(0, budget);
@@ -832,10 +838,10 @@ function gate(facts, sources) {
 // ---------------------------------------------------------------------------
 // Compose verified research from surviving facts.
 // ---------------------------------------------------------------------------
-async function groundedResearch(env, geminiKey, companyName, pdfText) {
-  // Authoritative board comes from the uploaded filing, not noisy web snippets.
-  const board = await extractBoardFromPdf(env, geminiKey, pdfText);
-  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, geminiKey, companyName, board);
+async function groundedResearch(env, geminiKey, companyName, pdfText, board) {
+  // Board was parsed from the uploaded filing up front (classifyDocument); if it
+  // is empty, fetchSources falls back to extracting names from search results.
+  const { sources, searchHits, via, promoters, independents } = await fetchSources(env, geminiKey, companyName, board || {});
   const sourceList = Object.values(sources).map(s => ({ url: s.url, trust: s.trust }));
 
   if (Object.keys(sources).length === 0)
