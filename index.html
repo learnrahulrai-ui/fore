@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Financial PDF Analyzer</title>
 </head>
 <body>
@@ -209,7 +210,7 @@
     } catch (e) {
       statusEl.textContent = 'Error: ' + e.message;
     } finally {
-      analyzeBtn.disabled = false;
+      checkReady();
     }
   });
 </script>
