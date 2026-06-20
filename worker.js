@@ -113,7 +113,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 7, edge_cache: true, placement: 'smart', ocr: true });
+      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 8, edge_cache: 'jina-only', placement: 'smart', ocr: true });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -544,10 +544,19 @@ function ipoSubsidiaryQueries(company, promoters) {
 
 // ---------------------------------------------------------------------------
 // Edge cache (Cloudflare Cache API, caches.default) — free, colo-local, no
-// quota and no write limit. We cache idempotent upstream reads: Serper results
-// and Jina full-text. Best-effort: if the platform ever no-ops it the code
-// still works, just slower. The synthetic key URL is never fetched and never
-// leaves the worker, so the secret trick-queries used as keys stay secret.
+// quota and no write limit. Used ONLY for Jina full-text now.
+//
+// IMPORTANT: on the free tier, each Cache API match/put COUNTS as a subrequest
+// against the 50/invocation cap — the same bucket as fetch(). So caching a
+// nearly-unique value is a net loss: the miss burns a match + a put (2 extra
+// subrequests) and almost never pays off. That is exactly what tripped "Too
+// many subrequests" — ~28 Serper queries each doing match+put ≈ 56 subrequests
+// on their own. Serper queries are company-specific (low repeat rate) and the
+// whole research result is already cached in KV (KV ops do NOT count as
+// subrequests), so Serper no longer touches the edge cache. Jina keeps it:
+// filing URLs (NSE/BSE/SEBI PDFs) genuinely repeat across companies and runs,
+// and re-reading a full filing is the slow, expensive part worth saving.
+// The synthetic key URL is never fetched and never leaves the worker.
 // ---------------------------------------------------------------------------
 const EDGE = 'https://fore.cache/';
 async function edgeGet(key) {
@@ -566,9 +575,9 @@ async function edgePut(key, text, ttl = 86400) {
 }
 
 async function serperSearch(query, key) {
-  const ck = 'serper:' + query;
-  const hit = await edgeGet(ck);
-  if (hit) { try { return JSON.parse(hit); } catch { /* stale -> refetch */ } }
+  // No edge cache here — see the Edge cache note above. Each Cache API op counts
+  // as a subrequest, and company-level queries rarely repeat, so caching them
+  // burned subrequests for almost no hit. One fetch, that's it.
   const res = await fetch(SERPER_ENDPOINT, {
     method: 'POST',
     headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
@@ -577,11 +586,9 @@ async function serperSearch(query, key) {
   if (!res.ok) return [];
   const data = await res.json();
   const results = data?.organic ?? [];
-  const mapped = results.map(r => ({
+  return results.map(r => ({
     url: r.link, title: r.title || '', text: r.snippet || '',
   })).filter(r => r.url && r.text && r.text.length > 30);
-  if (mapped.length) await edgePut(ck, JSON.stringify(mapped)); // real hits only, ~1 day
-  return mapped;
 }
 
 // Pull key people out of phase-1 snippets so phase 2 can search by person:
@@ -605,12 +612,14 @@ async function fetchSourcesSerper(env, geminiKey, companyName, key, board) {
   const sources = {};
   const searchHits = [];
   const seen = new Set();   // dedupe identical URLs across queries
-  // Cloudflare's FREE tier caps one worker invocation at 50 subrequests. Serper
-  // + Jina (4) + the ~6 Gemini steps must all fit under it, so the Serper calls
-  // get a hard budget. Queries are issued highest-value-first, so if the budget
-  // runs out it's the least-important tail (broker/IR) that gets dropped — never
-  // the PDF disclosures, IPO forensics, or promoter trails.
-  let budget = 28;
+  // Cloudflare's FREE tier caps one worker invocation at 50 subrequests, and
+  // Cache API ops count too (see Edge cache note). Worst-case accounting:
+  //   Serper 22 (1 fetch each) + Jina 3 (match+fetch+put = 9) + Gemini up to ~15
+  //   (each step can retry across the 3-model chain) = ~46, with OCR ~49.
+  // Queries are issued highest-value-first, so if the budget runs out it is the
+  // least-important tail (broker/IR) that gets dropped — never the PDF
+  // disclosures, IPO forensics, or promoter trails.
+  let budget = 22;
   const runAll = async (queries) => {
     if (budget <= 0) return;
     const slice = queries.slice(0, budget);
@@ -735,7 +744,7 @@ function enrichScore(s) {
   return n;
 }
 
-async function enrichWithFullText(env, sources, limit = 4) {  // 4 to stay under the 50-subrequest free-tier cap
+async function enrichWithFullText(env, sources, limit = 3) {  // 3: each Jina read = match+fetch+put (3 subrequests) under the 50 cap
   const picks = Object.values(sources)
     .sort((a, b) => enrichScore(b) - enrichScore(a))
     .slice(0, limit);
