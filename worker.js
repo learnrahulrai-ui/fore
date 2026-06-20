@@ -36,7 +36,11 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile';
 // Cloudflare neuron budget and never has to pay for anyone's analysis. The key
 // arrives per-request, is used once, and is NEVER logged, cached, or stored.
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_MODEL = 'gemini-2.0-flash';
+// Each model has its OWN free-tier quota bucket. If one shows "limit: 0" the
+// key's project may have free tier disabled — but trying a different model can
+// also dodge a model-specific zero. 2.5-flash is current and reasons better
+// for promoter forensics than 2.0. (2.5-flash-lite has the highest free RPD.)
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
