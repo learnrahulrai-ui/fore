@@ -113,7 +113,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 10, edge_cache: 'jina-only', placement: 'smart', ocr: true });
+      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 11, edge_cache: 'jina-only', placement: 'smart', ocr: true });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -219,15 +219,23 @@ export default {
       // all directed by the secret SYSTEM_PROMPT_2. Falls back to a plain call
       // if grounding isn't available on the user's key/quota. ---
       const analysisInput = `VERIFIED COMPANY FACTS:\n${research}\n\nDOCUMENT:\n${pdfText}`;
+      // 3072 ceiling: medium thinking is the hungriest setting and shares the
+      // token budget with the visible answer, so give it room — a cap only bites
+      // if the model would actually write more, and a truncated analysis is bad.
       let analysis;
       try {
-        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048, { grounded: true, think: 'medium' });
+        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 3072, { grounded: true, think: 'medium' });
       } catch {
-        analysis = await aiText(env, geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 2048);
+        analysis = await aiText(env, geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 3072);
       }
 
-      // --- Step 3: condense into the final report ---
-      let report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 1024);
+      // --- Step 3: condense into the final report. This is the deliverable, so
+      // it must NEVER truncate. In Gemini 3, maxOutputTokens is shared by hidden
+      // thinking AND the visible answer — a tight 1024 ceiling + default
+      // thinking let reasoning eat the budget and cut the report off
+      // mid-sentence. Fix: 'minimal' thinking (a condensation needs almost none)
+      // + a roomy ceiling, so the whole report always fits. ---
+      let report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 2048, { think: 'minimal' });
 
       // Leak-guard: if the output contains verbatim text from the secret system
       // prompts (injection via crafted PDF content), replace with a refusal.
