@@ -40,6 +40,10 @@
   <button id="analyze-btn" disabled>Analyze</button>
   &nbsp;<input type="checkbox" id="fresh">
   <label for="fresh">force refresh (ignore cache)</label>
+  <span id="dev-box" style="display:none">
+    &nbsp;&nbsp;<input type="checkbox" id="pro">
+    <label for="pro">use Gemini&nbsp;3 Pro (dev &mdash; needs a paid key)</label>
+  </span>
 </p>
 
 <p id="status"></p>
@@ -87,9 +91,16 @@
 
   const freshEl  = document.getElementById('fresh');
   const apiKeyEl = document.getElementById('api-key');
+  const proEl    = document.getElementById('pro');
   let extractedText = '';
   let headText = '';
   let pageImages = [];   // set only for scanned PDFs (sent for OCR)
+
+  // Hidden dev toggle: only ?dev=1 reveals the "use Gemini 3 Pro" checkbox.
+  // Public visitors never see it, so the app is byte-for-byte the same for them.
+  if (new URLSearchParams(location.search).get('dev') === '1') {
+    document.getElementById('dev-box').style.display = 'inline';
+  }
 
   // Analyze is allowed once we have a key AND either extracted text or, for a
   // scanned PDF, rendered page images.
@@ -188,6 +199,7 @@
           head: headText,
           images: pageImages,
           fresh: freshEl.checked,
+          tier: (proEl && proEl.checked) ? 'pro' : 'flash',
           geminiKey: apiKeyEl.value.trim(),
         }),
       });

@@ -49,6 +49,12 @@ const GEMINI_FALLBACK_MODEL = 'gemini-3-flash-preview';
 // Lite model has the highest free-tier RPD and draws far less concurrent traffic
 // — almost always has headroom when the heavier models are overwhelmed.
 const GEMINI_LITE_MODEL = 'gemini-3.1-flash-lite';
+// DEV-ONLY flagship. Reached only when a request sends tier:'pro' (the hidden
+// ?dev=1 toggle), which runs on the OWNER's paid key — never the public path.
+// Gemini 3 Pro is the deep-reasoning model: far stronger for the forensic
+// promoter analysis than any Flash. NOTE: confirm this exact id against your
+// AI Studio model list; if it 404s on the Pro path, change only this line.
+const GEMINI_PRO_MODEL = 'gemini-3-pro';
 
 const SERPER_ENDPOINT = 'https://google.serper.dev/search';
 
@@ -113,7 +119,7 @@ export default {
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
     if (request.method === 'GET') {
-      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, rev: 11, edge_cache: 'jina-only', placement: 'smart', ocr: true });
+      return json({ ok: true, model: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, lite: GEMINI_LITE_MODEL, pro: GEMINI_PRO_MODEL, rev: 12, edge_cache: 'jina-only', placement: 'smart', ocr: true });
     }
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
@@ -132,6 +138,12 @@ export default {
     if (!geminiKey) {
       return json({ error: 'Please paste your Google Gemini API key. Get a free one (no card) at https://aistudio.google.com/apikey' }, 400);
     }
+
+    // DEV-ONLY: tier:'pro' (from the hidden ?dev=1 toggle) runs the forensic
+    // analysis on Gemini 3 Pro instead of Flash. It runs on whatever key was
+    // pasted — so only a paid key can actually use it, and only the owner spends
+    // the owner's credit. The public path never sets this, so it stays Flash.
+    const usePro = body.tier === 'pro';
 
     try {
       let pdfText = body.text || '';
@@ -211,6 +223,8 @@ export default {
         has_jina_key: !!env.JINA_API_KEY,
         has_prompt_2: !!env.SYSTEM_PROMPT_2,
         has_prompt_3: !!env.SYSTEM_PROMPT_3,
+        tier: usePro ? 'pro' : 'flash',                 // which model tier ran
+        analysis_model: usePro ? GEMINI_PRO_MODEL : GEMINI_MODEL,
       };
       console.log('DIAG', JSON.stringify(diag));
 
@@ -222,11 +236,17 @@ export default {
       // 3072 ceiling: medium thinking is the hungriest setting and shares the
       // token budget with the visible answer, so give it room — a cap only bites
       // if the model would actually write more, and a truncated analysis is bad.
+      // On the Pro path give thinking room to work (high thinking + a bigger
+      // ceiling); the paid tier can afford it. Both the grounded call and its
+      // plain fallback stay on Pro when usePro, so tier:'pro' never silently
+      // drops to Flash.
+      const think = usePro ? 'high' : 'medium';
+      const cap = usePro ? 4096 : 3072;
       let analysis;
       try {
-        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 3072, { grounded: true, think: 'medium' });
+        analysis = await runGemini(geminiKey, env.SYSTEM_PROMPT_2, analysisInput, cap, { grounded: true, think, pro: usePro });
       } catch {
-        analysis = await aiText(env, geminiKey, env.SYSTEM_PROMPT_2, analysisInput, 3072);
+        analysis = await aiText(env, geminiKey, env.SYSTEM_PROMPT_2, analysisInput, cap, { pro: usePro });
       }
 
       // --- Step 3: condense into the final report. This is the deliverable, so
@@ -235,7 +255,7 @@ export default {
       // thinking let reasoning eat the budget and cut the report off
       // mid-sentence. Fix: 'minimal' thinking (a condensation needs almost none)
       // + a roomy ceiling, so the whole report always fits. ---
-      let report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 2048, { think: 'minimal' });
+      let report = await aiText(env, geminiKey, env.SYSTEM_PROMPT_3, analysis, 2048, { think: 'minimal', pro: usePro });
 
       // Leak-guard: if the output contains verbatim text from the secret system
       // prompts (injection via crafted PDF content), replace with a refusal.
@@ -315,8 +335,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // fallback still has headroom. 400/401/403 (bad request / bad key) are NOT
 // retried — they won't fix themselves and would just burn a subrequest. The key
 // travels in the x-goog-api-key header, never the URL.
-async function geminiCall(key, reqBody, attempts = 3) {
-  const chain = [GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_LITE_MODEL];
+// opts.chain overrides the model list (dev Pro path passes [GEMINI_PRO_MODEL]);
+// opts.attempts overrides the retry count. Defaults reproduce the exact prior
+// behaviour: the 3-model free-tier fallback chain, one attempt per model.
+async function geminiCall(key, reqBody, opts = {}) {
+  const chain = opts.chain || [GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_LITE_MODEL];
+  const attempts = opts.attempts || chain.length;
   let lastErr = '';
   for (let i = 0; i < attempts; i++) {
     const model = chain[Math.min(i, chain.length - 1)];
@@ -354,7 +378,10 @@ async function runGemini(key, system, user, maxTokens, opts = {}) {
   // Google Search grounding: the model searches the live web while it answers;
   // WHAT it hunts for is driven entirely by the secret system prompt.
   if (opts.grounded) reqBody.tools = [{ google_search: {} }];
-  return geminiCall(key, reqBody);
+  // Dev Pro path: run on Gemini 3 Pro ONLY (no silent Flash fallback), so a
+  // test run is unambiguously Pro-or-error — the point is to see Pro's ceiling.
+  const callOpts = opts.pro ? { chain: [GEMINI_PRO_MODEL], attempts: 2 } : {};
+  return geminiCall(key, reqBody, callOpts);
 }
 
 // Vision OCR for scanned/image PDFs. One multimodal Gemini call on the user's
