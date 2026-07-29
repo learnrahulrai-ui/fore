@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Standards &mdash; how these reports are written</title>
+<style>
+  body {
+    font-family: Georgia, "Times New Roman", Times, serif;
+    max-width: 740px; margin: 2.5em auto; padding: 0 1.2em;
+    line-height: 1.65; color: #111;
+  }
+  h1 { font-size: 1.5em; margin-bottom: 0.2em; }
+  h2 { font-size: 1.1em; margin-top: 2.2em; border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
+  .kicker { font-style: italic; color: #555; margin-top: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92em; margin: 1.2em 0; }
+  th, td { border: 1px solid #ccc; padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { background: #f3f3f3; }
+  .pull { border-left: 4px solid #555; background: #f7f7f7; padding: 0.7em 1.1em; margin: 1.3em 0; }
+  .note { color: #555; font-size: 0.9em; }
+  .fine { color: #999; font-size: 0.82em; }
+  .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Standards</h1>
+<p class="kicker">What these reports are built from, what they test for, and what they will not do.</p>
+<hr>
+
+<p>
+Everything in a report comes from a document that anyone can open. Not a
+summary of a document, and not a data vendor's transcription of one. This is
+not fastidiousness for its own sake &mdash; in the course of one company's
+research, two well-known aggregators described the same promoter share sale at
+&#8377;487.9 crore and &#8377;516.4 crore, while the exchange filing said
+&#8377;539.5 crore. All three appeared on reputable sites. Only one was the
+filing.
+</p>
+
+<p>
+The sources, in rough order of how much work each one repays:
+</p>
+
+<div class="wrap">
+<table>
+<tr><th>Source</th><th>What it settles</th></tr>
+<tr><td><b>The prospectus (DRHP/RHP)</b></td><td>Why the company listed and who took the money. The objects clause states whether a single rupee reaches the business. The risk factors disclose customer concentration, related-party volume, litigation and regulatory exposure &mdash; and what is <em>absent</em> from them matters as much as what is present.</td></tr>
+<tr><td><b>Quarterly shareholding XBRL</b></td><td>Promoter-by-promoter holdings, by name, every quarter. This is where inter-family transfers become visible &mdash; the ones that make a large sale look like a small one at group level.</td></tr>
+<tr><td><b>Insider and SAST disclosures</b></td><td>Exact dates, share counts, prices and before/after holdings for every promoter transaction. Always preferred over any news report of the same event.</td></tr>
+<tr><td><b>Audited annual accounts</b></td><td>The related-party schedule above all: rent, remuneration, sitting fees, purchases from group entities, guarantees, loans. Read across six years, not one.</td></tr>
+<tr><td><b>Earnings-call transcripts</b></td><td>Read in sequence, not individually. A claim made in one year is checked against the accounts two years later.</td></tr>
+<tr><td><b>Daily price and volume</b></td><td>What the market actually did on the day a promoter sold, and in the ten sessions after.</td></tr>
+</table>
+</div>
+
+<h2>The tests</h2>
+
+<p>
+<b>The Public Return Test.</b> From the IPO date and from each promoter sale
+date, the stock's forward return is measured at six, twelve, eighteen,
+twenty-four and thirty-six months against an India-listed gold ETF and against
+real inflation of ten per cent a year, compounded to the window. Every horizon
+is reported, including the ones the company wins. The question that matters
+most is whether the answer changes depending on whether you bought before the
+promoter started selling or alongside him.
+</p>
+
+<p>
+<b>Said versus did.</b> Every quantified forward claim on every call is
+recorded with its date and checked against what the accounts later showed.
+Guidance that is quietly restated downward, and then described as intact,
+counts as a miss. The pattern that matters is not how many promises are kept
+but <em>which</em> ones &mdash; whether the commitments that get delivered on
+time are the ones that pay shareholders or the ones that pay the promoter.
+</p>
+
+<p>
+<b>The language test.</b> For each management statement, one question: does it
+commit to something checkable &mdash; a number, a date, a named counterparty
+&mdash; or does it only sound confident while committing to nothing? Fluency is
+not evidence of an answer. The signal is the gap: a speaker precise to the
+crore on twelve topics and suddenly vague on the thirteenth has told you which
+one is the thirteenth. Tracked across years, a topic that grows <em>less</em>
+answerable as the facts become clearer is worth more than any single evasion.
+</p>
+
+<p>
+<b>The money-flow trace.</b> Every route by which value reaches the promoter
+family, followed as far back as the filings allow: share sales, buybacks,
+dividends, remuneration, sitting fees, rent, purchases from group entities,
+CSR routed to related trusts, and assets sold to relatives. Listed separately,
+because they are not the same thing &mdash; a buyback is extraction, a purchase
+of goods is trade, and a corporate guarantee to a wholly-owned subsidiary is
+neither. The report says which is which.
+</p>
+
+<p>
+<b>Incremental return on new capital.</b> Headline return ratios describe
+plants built decades ago and long since depreciated. What a buyer today is
+funding is the <em>new</em> capital, so incremental profit is measured against
+incremental capital expenditure and compared with the company's own cost of
+debt. The two numbers are frequently very far apart.
+</p>
+
+<h2>What these reports will not do</h2>
+
+<div class="pull">
+No price targets. No buy, hold or sell. No forecast of what any share will do
+next. No modelled earnings for years that have not happened. Those are the
+parts of conventional research that are least verifiable and most easily
+shaded, and their absence is deliberate.
+</div>
+
+<p>
+What replaces them is a record of what already happened, stated plainly enough
+to be checked and, if wrong, corrected. Four further rules follow from that.
+</p>
+
+<p>
+<b>Uncertainty is stated in the sentence, not the footnote.</b> If a figure
+could not be verified, the report says so where the figure appears. Several
+items in the published research remain open &mdash; a plant's sale price, an
+amalgamation's consideration, a rent that sits in a joint venture's accounts
+rather than the company's &mdash; and each is named as unresolved rather than
+estimated into apparent completeness.
+</p>
+
+<p>
+<b>Findings that fail get published too.</b> A pattern that looks damning and
+then turns out to be ordinary is reported as ordinary. A company that beats its
+guidance is credited with beating it. A promoter who discloses something
+awkward voluntarily is credited with disclosing it.
+</p>
+
+<p>
+<b>Corrections stay on the page.</b> Where an earlier version of a report was
+wrong, the correction is visible in the published text rather than silently
+edited out. The one significant error so far &mdash; a stake movement dated
+after a listing when the filings showed it happened before &mdash; is described
+in the report itself, because a reader has no way to judge the rest of the work
+without seeing how mistakes are handled.
+</p>
+
+<p>
+<b>Nothing is asserted about intent.</b> Filings establish what was done, when,
+by whom and for how much. They do not establish why. Where a sequence of
+disclosed, individually legal steps produces a result that consistently favours
+one party, the report sets out the sequence and the arithmetic and lets the
+reader draw the conclusion. Every step in the research published so far was
+disclosed by the company itself. None of it was hidden. It had simply never
+been assembled in one place.
+</p>
+
+<hr>
+<p class="fine">
+Research, not investment advice. No price targets, no recommendations, no
+position in any security discussed.
+&nbsp;&middot;&nbsp; <a href="promoters.html">Reports</a>
+&nbsp;&middot;&nbsp; <a href="index.html">Analyse a filing yourself</a>
+</p>
+
+</body>
+</html>
