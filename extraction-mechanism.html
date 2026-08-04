@@ -3,329 +3,460 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Indian Promoter Extraction: The Mechanism Revealed (FY25–FY26)</title>
+  <title>How an Indian promoter family uses the public market &mdash; the mechanism, from scratch</title>
   <style>
     body {
       font-family: Georgia, "Times New Roman", Times, serif;
-      max-width: 1000px;
-      margin: 2.5em auto;
-      padding: 0 1.2em;
-      line-height: 1.65;
-      color: #111;
+      max-width: 780px; margin: 2.5em auto; padding: 0 1.2em;
+      line-height: 1.68; color: #111;
     }
-    h1 { font-size: 1.5em; margin-bottom: 0.3em; }
-    h2 { font-size: 1.2em; margin-top: 2em; border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
-    pre {
-      background: #f5f5f5;
-      padding: 1em;
-      overflow-x: auto;
-      font-size: 0.85em;
-      line-height: 1.4;
-      border-left: 3px solid #999;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 1.2em 0;
-      font-size: 0.95em;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 0.7em;
-      text-align: left;
-      vertical-align: top;
-    }
-    th {
-      background: #f3f3f3;
-      font-weight: bold;
-    }
-    .pull {
-      border-left: 4px solid #555;
-      background: #f9f9f9;
-      padding: 0.8em 1.2em;
-      margin: 1.3em 0;
-    }
-    .note { color: #555; font-size: 0.9em; }
+    h1 { font-size: 1.5em; line-height: 1.3; margin-bottom: 0.25em; }
+    h2 { font-size: 1.15em; margin-top: 2.2em; border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
+    .kicker { font-style: italic; color: #555; font-size: 0.95em; margin-top: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1.3em 0;
+            font-size: 0.92em; font-variant-numeric: tabular-nums; }
+    th, td { border: 1px solid #ccc; padding: 7px 9px; text-align: left; vertical-align: top; }
+    th { background: #f3f3f3; }
+    .num td:not(:first-child), .num th:not(:first-child) { text-align: right; }
+    .pull { border-left: 4px solid #555; background: #f7f7f7;
+            padding: 0.75em 1.15em; margin: 1.4em 0; font-size: 0.97em; }
+    .verdict { border-left: 4px solid #7a1f1f; background: #faf6f6;
+               padding: 0.9em 1.2em; margin: 1.5em 0; }
+    .verdict b { color: #7a1f1f; }
+    .corr { border-left: 4px solid #7a1f1f; background: #fff9f9;
+            padding: 0.8em 1.15em; margin: 1.5em 0; font-size: 0.9em; }
+    blockquote { margin: 1em 0 1em 1.5em; padding-left: 1em; border-left: 2px solid #ddd;
+                 color: #333; font-style: italic; }
+    .note { color: #555; font-size: 0.89em; }
     .fine { color: #999; font-size: 0.82em; }
-    .highlight { background: #fffacd; }
-    b { font-weight: bold; }
+    .miss { color: #7a1f1f; font-weight: bold; }
+    .hit  { color: #1f5c2e; font-weight: bold; }
+    .wrap { overflow-x: auto; }
   </style>
 </head>
 <body>
 
-<h1>Indian Promoter Extraction: The Mechanism Revealed</h1>
-<p class="note">
-  Forensic analysis of ASK Automotive Limited (NSE: ASKAUTOLTD), FY25–FY26.
-  Every figure from audited consolidated financial statements (Walker Chandiok & Co. LLP).
-</p>
-
+<h1>How an Indian promoter family actually uses the public market</h1>
+<p class="kicker">The mechanism explained from scratch, then tested end to end against one company's filings &mdash; ASK Automotive Limited, FY21&ndash;FY26 audited. August 2026.</p>
 <hr>
 
-<h2>How ₹1.36 Crore Became ₹1,978 Crore Extracted</h2>
-
 <p>
-  <b>The claim:</b> Indian family-controlled companies systematize wealth extraction through public markets.
-  The mechanism requires three interlocking features: minimal founding capital (establishing unassailable
-  cost basis), bonus share inflation (multiplying share count while preserving ownership %), and market
-  re-pricing (converting notional wealth to liquid cash).
+About seven in ten Indian listed companies are controlled by a family. That is
+not a footnote about governance &mdash; it changes what a listing <em>is</em>.
+The textbook version, written for markets where ownership is dispersed and
+managers are hired hands, says a company sells shares to raise money it needs,
+and the public becomes a part-owner alongside professional management. Almost
+none of that describes what happens when a family that already owns 100% of a
+profitable business decides to list it. The family does not need the money
+&mdash; if it did, it would not be profitable. It is not hiring anyone; it
+already runs the place and will keep running it. And it is not giving up
+control, because it is selling a slice small enough that it keeps three-quarters
+of the company afterwards.
 </p>
 
 <p>
-  ASK Automotive demonstrates this at scale. One founder subscribed ₹1.36 crore in 1988. By October 2025,
-  his family had extracted ₹1,978 crore. Not from superior returns, but from bonus inflation + market
-  re-pricing + public market appetite.
+So the honest question is: if a family that owns everything, needs no capital,
+and is surrendering no control decides to list &mdash; what did listing actually
+buy them? The answer is not obvious from the outside, and it is the whole
+subject of this page. It has nothing to do with growth capital and everything to
+do with a constraint that binds every rupee a family can pull out of a company
+it wholly owns, right up until the day it lists.
 </p>
 
+<p>
+Here is the constraint. A promoter family with a private company has several
+ways to move money from the company to themselves, and every single one has a
+ceiling written into law or into a contract they have signed:
+</p>
+
+<div class="wrap">
 <table>
-  <tr>
-    <th>Metric</th>
-    <th>Value</th>
-    <th>Significance</th>
-  </tr>
-  <tr>
-    <td>Initial capital (1988)</td>
-    <td>₹1.36 crore</td>
-    <td>Only cash ever subscribed by Kuldip Singh Rathee</td>
-  </tr>
-  <tr>
-    <td>Cost basis per share (post-bonus)</td>
-    <td>₹0.000069</td>
-    <td>Result of 20:1 (2018) + 3:1 (2021) bonus capitalization</td>
-  </tr>
-  <tr>
-    <td>Share count at IPO</td>
-    <td>197.14 million</td>
-    <td>Kuldip + family 50%; public 50%</td>
-  </tr>
-  <tr>
-    <td>IPO price per share</td>
-    <td>₹150</td>
-    <td>Market re-pricing: ₹0.000069 → ₹150 (2,173,913× increase)</td>
-  </tr>
-  <tr class="highlight">
-    <td><b>Market extraction (24 months)</b></td>
-    <td><b>₹1,469 crore</b></td>
-    <td>IPO + OFS + bulk deal to SBI Mutual Fund</td>
-  </tr>
-  <tr>
-    <td>Company cash distributed</td>
-    <td>₹509 crore</td>
-    <td>Dividend, buyback, CSR, salary, rent</td>
-  </tr>
-  <tr class="highlight">
-    <td><b>Total extracted</b></td>
-    <td><b>₹1,978 crore</b></td>
-    <td>1,454× return on ₹1.36 crore (35 years)</td>
-  </tr>
-  <tr>
-    <td>Extraction rate multiplier</td>
-    <td>49.5×</td>
-    <td>Post-listing (₹989 cr/yr) vs. pre-listing (₹20 cr/yr)</td>
-  </tr>
+<tr><th>Route out of a private company</th><th>Who pays for it</th><th>The ceiling on it</th></tr>
+<tr><td><b>Salary and commission</b> to family members who hold executive roles</td><td>Company cash, booked as expense</td><td>Companies Act 2013 caps managerial remuneration as a percentage of net profit; going beyond needs shareholder approval and disclosure</td></tr>
+<tr><td><b>Rent</b>, where the family personally owns land or buildings the company operates from</td><td>Company cash, booked as expense</td><td>Must be at arm's-length rates and pass the audit committee; a related-party rent that jumps has to be justified</td></tr>
+<tr><td><b>Dividend</b></td><td>Company cash, out of post-tax profit</td><td>Pro rata &mdash; every shareholder gets the same per share, so once outsiders exist you cannot pay only yourself</td></tr>
+<tr><td><b>Buyback</b> of the family's own shares</td><td>Company cash</td><td>Limited by distributable cash, taxed, and typically requires <b>lender consent</b> under loan covenants &mdash; banks do not like cash leaving a borrower</td></tr>
+<tr><td><b>Purchases and job-work</b> routed through a family-owned supplier</td><td>Company cash, booked as cost of goods</td><td>Related-party disclosure, auditor scrutiny, and the tax authority's transfer-pricing rules</td></tr>
+<tr><td><b>Selling shares</b></td><td style="color:#7a1f1f;"><b>Whoever buys them</b></td><td style="color:#7a1f1f;"><b>Nothing &mdash; but in a private company there is nobody to sell to</b></td></tr>
 </table>
-
-<h2>Audited Financial Performance (FY25–FY26)</h2>
+</div>
 
 <p>
-  Walker Chandiok & Co. LLP (statutory auditors) issued unmodified audit opinions on consolidated
-  results. Below are the unaudited financials from their audit reports.
+Read down that last column and the shape of the problem appears. Five of the six
+routes are capped, and they are capped in the same direction &mdash; all five
+drain the company's own bank account, which is exactly why the law, the auditor
+and the lender all have standing to object. The sixth route has no cap at all,
+because the money does not come from the company; it comes from a buyer. But in
+a private company that route is theoretical. There is no buyer. There is no
+price. A stake in an unlisted family firm is worth whatever a rare, negotiated,
+heavily-discounted private transaction says it is worth, and those happen once a
+decade if ever.
 </p>
 
+<div class="pull">
+<b>Which is what a listing actually does.</b> It does not create a new way to
+take money out. It takes the one route that was never capped &mdash; selling
+shares &mdash; and supplies the missing ingredient: a permanent, liquid,
+daily-priced crowd of buyers, at a valuation set by the most optimistic of them
+rather than by a negotiation. After listing, the family can convert ownership
+into cash on any morning it chooses, in any size the market will absorb, without
+touching company cash, without asking a lender, without a statutory cap, and
+without the auditor having any say &mdash; because it is not a company
+transaction at all. The company is not a party to it. It appears in the
+company's accounts nowhere.
+</div>
+
+<p>
+That last sentence is the one worth reading twice, because it is the reason this
+mechanism is nearly invisible to the ordinary tools people use to check on a
+company. A related-party rent shows up in the related-party note. A buyback shows
+up in the cash-flow statement. A salary shows up in the remuneration table. But
+a promoter selling &#8377;500 crore of stock to institutions appears in <em>none
+of the financial statements</em>, because no company money moved. It surfaces
+only in a shareholding-pattern filing and a bulk-deal record &mdash; two places
+that get read by nobody who is reading the annual report.
+</p>
+
+<p>
+Before working through a real example, two more pieces of the machinery need
+naming, because without them the sums do not reach the size they reach.
+</p>
+
+<p>
+The first is the <b>bonus issue</b>, and it is almost universally described
+wrongly, including in earlier versions of this page. A bonus issue hands every
+shareholder extra shares in proportion to what they already hold, free, by
+capitalising reserves the business genuinely earned. Because it is strictly pro
+rata, <b>a bonus issue cannot change anybody's ownership percentage</b>. Someone
+holding 40% before a 20-for-1 bonus holds 40% after. Anyone who tells you a
+bonus took a promoter from 2% to 50% has made an arithmetic error &mdash; that
+is not a thing a bonus can do.
+</p>
+
+<p>
+What a bonus does do is two things that matter enormously here. It collapses the
+<b>cost basis per share</b>, because the same original cash is now spread across
+eighty-four times as many shares. And it manufactures <b>share count</b> &mdash;
+which is the thing that decides whether a company can be listed at all. A
+company with 42,353 shares in issue cannot have an IPO. There is no way to
+distribute 42,353 units among thousands of retail applicants and dozens of
+institutions, no way to strike a sensible per-share price, no way to satisfy
+minimum-lot and free-float requirements. Before any family firm can be sold to
+the public, its share count has to be inflated by orders of magnitude, and the
+bonus issue is how that is done, at zero cash cost, out of reserves. The bonus
+is not the extraction. It is the <em>precondition</em> for it &mdash; the step
+that turns an indivisible family holding into a divisible, sellable, market-priced
+pile.
+</p>
+
+<p>
+The second piece is <b>the multiple</b>. A family that has spent thirty years
+building a business is, at listing, being paid not for the profit the company
+earned last year but for a multiple of it &mdash; thirty, forty, sometimes ninety
+times &mdash; and that multiple is the market's estimate of profits that have
+not happened yet. This is where the risk transfer sits, and it is worth being
+precise rather than indignant about it. A high multiple is not theft. Under
+ordinary finance arithmetic a company with no growth is fairly worth roughly the
+inverse of the required return, and anything above that is the price of a real,
+sustained growth expectation. What makes a sale into a high multiple lopsided is
+not the number. It is that <b>the seller collects the entire present value of
+that future growth today, in cash, and retains none of the risk that it fails to
+arrive</b>. The buyer inherits the obligation to be right, alone, having neither
+priced it nor timed it.
+</p>
+
+<p>
+And there is one tell for whether a seller privately believes their own growth
+story: <b>repetition</b>. A single sale is genuinely ambiguous &mdash;
+diversification, estate planning, a house, a tax bill are all reasons a true
+believer might still sell some. A promoter who sells into every fresh wave of
+optimism is repeatedly expressing a private view that the price has outrun what
+they actually expect to deliver.
+</p>
+
+<h2>Which is the theory &mdash; so now test it against one company's filings</h2>
+
+<p>
+ASK Automotive Limited makes friction braking components and aluminium
+die-cast parts for two-wheelers. It is a real business: founded 1988, eighteen
+plants, roughly half the Indian market in two-wheeler brake shoes, customers
+including Hero, Honda, Bajaj, TVS, Yamaha and Suzuki, and an unmodified audit
+opinion from Walker Chandiok &amp; Co LLP. Nothing below suggests otherwise, and
+that is exactly what makes it a useful test case &mdash; the mechanism described
+above does not require a fraud, and it is far easier to see when there isn't one.
+</p>
+
+<p>
+Start with the cash the family ever put in, because everything downstream is
+measured against it. Between 1988 and 2005 there were thirteen cash
+subscriptions for equity, totalling <b>&#8377;1.36 crore</b>. The last of them
+is dated 23 May 2005. After that: nothing, for eighteen years. The business
+funded itself out of retained profit, which is the genuinely creditable part of
+this story and should not be waved past. Then the share count was built:
+</p>
+
+<div class="wrap">
+<table class="num">
+<tr><th style="text-align:left;">When</th><th style="text-align:left;">What happened</th><th>Shares in issue</th></tr>
+<tr><td style="text-align:left;">1988&ndash;2005</td><td style="text-align:left;">Thirteen cash subscriptions &mdash; <b>&#8377;1.36 crore total, the only equity cash ever paid in</b></td><td>42,353</td></tr>
+<tr><td style="text-align:left;">Feb 2018</td><td style="text-align:left;">Face value sub-divided 50:1, &#8377;100 &rarr; &#8377;2</td><td>2,117,650</td></tr>
+<tr><td style="text-align:left;"><b>28 Mar 2018</b></td><td style="text-align:left;"><b>Bonus issue, 20 shares for every 1 held &mdash; free</b></td><td>44,470,650</td></tr>
+<tr><td style="text-align:left;">Jul 2019</td><td style="text-align:left;">6,390,000 shares issued for an amalgamation, <b>consideration other than cash</b></td><td>50,860,650</td></tr>
+<tr><td style="text-align:left;"><b>30 Mar 2021</b></td><td style="text-align:left;"><b>Bonus issue, 3 for 1 &mdash; free</b></td><td>203,442,600</td></tr>
+<tr><td style="text-align:left;">Sep 2021, Sep 2022</td><td style="text-align:left;">Two buybacks, 6,300,000 shares retired</td><td>197,142,600</td></tr>
+<tr><td style="text-align:left;">Nov 2023</td><td style="text-align:left;"><b>IPO &mdash; 100% offer for sale. Share count does not change, so the company receives nothing.</b></td><td>197,142,600</td></tr>
+</table>
+</div>
+
+<p>
+Two bonus issues multiplied the count 84-fold, and that is what made a listing
+mechanically possible: 42,353 shares could never have been offered to the
+public; 197 million could. The same arithmetic collapses the cost basis. The
+RHP carries a certificate from B.B. &amp; Associates, dated 12 June 2023, putting
+the promoters' weighted-average cost of acquisition at <b>&#8377;0.02 per
+share</b>. That figure is not a scandal to be explained &mdash; it is
+&#8377;1.36 crore of genuine 1988&ndash;2005 cash divided across a share count
+inflated 84 times by capitalising reserves the business really did earn. It is
+arithmetic. But it means the shares were then sold at an issue price of
+<b>&#8377;282</b>, and the gap between &#8377;0.02 and &#8377;282 is the entire
+economic content of the transaction.
+</p>
+
+<p>
+Now watch the two channels run side by side. Before listing, the family used the
+capped routes, and used them hard &mdash; two buybacks in consecutive years
+consumed 89% and 90% of those years' profits, and every rupee of it came out of
+company cash under a lender's covenants and a 23% tax. After listing, the
+uncapped route opened:
+</p>
+
+<div class="wrap">
+<table class="num">
+<tr><th style="text-align:left;">Channel</th><th style="text-align:left;">Period</th><th>Amount</th><th style="text-align:left;">Paid by</th></tr>
+<tr><td style="text-align:left;">Buyback &mdash; Kuldip Singh Rathee alone</td><td style="text-align:left;">Sep 2021 + Sep 2022</td><td>&#8377;149.93 cr</td><td style="text-align:left;">The company</td></tr>
+<tr><td style="text-align:left;">Remuneration, rent, sitting fees, CSR to related trust</td><td style="text-align:left;">FY21&ndash;FY26</td><td>&#8377;133.70 cr</td><td style="text-align:left;">The company</td></tr>
+<tr><td style="text-align:left;">Dividends, family share</td><td style="text-align:left;">FY21, FY25&ndash;FY26</td><td>&#8377;39.76 cr</td><td style="text-align:left;">The company</td></tr>
+<tr style="background:#faf6f6;"><td style="text-align:left;"><b>Sub-total &mdash; out of company cash</b></td><td></td><td><b>&#8377;323.39 cr</b></td><td style="text-align:left;"><b>Capped routes</b></td></tr>
+<tr><td style="text-align:left;">IPO offer for sale &mdash; Kuldip Singh Rathee</td><td style="text-align:left;">Nov 2023</td><td>&#8377;583.74 cr</td><td style="text-align:left;">IPO subscribers</td></tr>
+<tr><td style="text-align:left;">IPO offer for sale &mdash; Mrs. Vijay Rathee</td><td style="text-align:left;">Nov 2023</td><td>&#8377;250.17 cr</td><td style="text-align:left;">IPO subscribers</td></tr>
+<tr><td style="text-align:left;">Offer for sale &mdash; Kuldip Singh Rathee</td><td style="text-align:left;">Sep 2024</td><td>&#8377;539.50 cr</td><td style="text-align:left;">Institutional buyers</td></tr>
+<tr><td style="text-align:left;">Bulk deal to SBI Mutual Fund &mdash; Kuldip Singh Rathee</td><td style="text-align:left;">Nov 2025</td><td>&#8377;372.20 cr</td><td style="text-align:left;">One mutual fund</td></tr>
+<tr style="background:#faf6f6;"><td style="text-align:left;"><b>Sub-total &mdash; out of the market</b></td><td></td><td><b>&#8377;1,745.61 cr</b></td><td style="text-align:left;"><b>Uncapped route</b></td></tr>
+<tr style="background:#f0f0f0;"><td style="text-align:left;"><b>Total to the family since 2021</b></td><td></td><td><b>&#8377;2,069.00 cr</b></td><td style="text-align:left;">&mdash;</td></tr>
+</table>
+</div>
+
+<p class="note">
+These two sub-totals must be read separately and never merged into a single
+sentence. The &#8377;323.39 crore left the company's own bank account and
+reduced what was available to every shareholder. The &#8377;1,745.61 crore never
+touched the company at all &mdash; it moved from buyers to sellers, and ASK
+Automotive was not a party to it. Different payer, different tax treatment,
+different meaning. Adding them produces a true total of what the family
+received, but the composition is the finding, not the sum.
+</p>
+
+<p>
+Set the two sub-totals against time and the step-change is the whole argument.
+Across FY21&ndash;FY23, under every cap the law and the lenders imposed, the
+family drew roughly <b>&#8377;72 crore a year</b>, all of it company cash. Across
+the twenty-five months from November 2023, through three share sales, they drew
+roughly <b>&#8377;856 crore a year</b>, none of it company cash. That is an
+<b>11.8-fold change in rate</b>, and the payer changed from the company to the
+public market. Nothing about the business changed on listing day. What changed
+was who was standing on the other side of the transaction.
+</p>
+
+<p>
+The company's own accounts, meanwhile, tell a different story about where cash
+was actually going:
+</p>
+
+<div class="wrap">
+<table class="num">
+<tr><th style="text-align:left;">Audited consolidated</th><th>FY25</th><th>FY26</th><th>Change</th><th>%</th></tr>
+<tr><td style="text-align:left;">Revenue from operations</td><td>3,600.83</td><td>4,176.32</td><td>+575.49</td><td>+16.0%</td></tr>
+<tr><td style="text-align:left;">EBITDA</td><td>437.39</td><td>540.59</td><td>+103.20</td><td>+23.6%</td></tr>
+<tr><td style="text-align:left;">EBITDA margin, on revenue</td><td>12.1%</td><td>12.9%</td><td>+0.8pp</td><td>&mdash;</td></tr>
+<tr><td style="text-align:left;">Profit after tax</td><td>247.62</td><td>297.32</td><td>+49.70</td><td>+20.1%</td></tr>
+<tr><td style="text-align:left;">Earnings per share</td><td>12.56</td><td>15.08</td><td>+2.52</td><td>+20.1%</td></tr>
+<tr style="background:#faf6f6;"><td style="text-align:left;"><b>Total borrowings</b></td><td><b>393.46</b></td><td><b>654.06</b></td><td><b>+260.60</b></td><td><b>+66.2%</b></td></tr>
+<tr style="background:#faf6f6;"><td style="text-align:left;"><b>Debt-to-equity</b></td><td><b>0.38&times;</b></td><td><b>0.50&times;</b></td><td><b>+0.12&times;</b></td><td><b>+32%</b></td></tr>
+<tr><td style="text-align:left;">Total equity</td><td>1,043.12</td><td>1,311.10</td><td>+267.98</td><td>+25.7%</td></tr>
+<tr><td style="text-align:left;">Total assets</td><td>1,923.86</td><td>2,556.80</td><td>+632.94</td><td>+32.9%</td></tr>
+<tr><td style="text-align:left;">Operating cash flow</td><td>360.20</td><td>301.19</td><td>&minus;59.01</td><td>&minus;16.4%</td></tr>
+<tr><td style="text-align:left;">Capital expenditure</td><td>345.67</td><td>483.64</td><td>+137.97</td><td>+39.9%</td></tr>
+<tr style="background:#faf6f6;"><td style="text-align:left;"><b>Free cash after capex</b></td><td><b>+14.53</b></td><td><b>&minus;182.45</b></td><td><b>&minus;196.98</b></td><td>&mdash;</td></tr>
+<tr><td style="text-align:left;">Dividend declared per share</td><td>1.50</td><td>1.85</td><td>+0.35</td><td>+23.3%</td></tr>
+</table>
+</div>
+<p class="note">
+&#8377; crore, from the audited consolidated statements. Debt-to-equity here is
+gross borrowings over total equity: 654.06 / 1,311.10 = <b>0.50&times;</b>.
+Including &#8377;24.96 crore of lease liabilities as debt would give 0.52&times;
+&mdash; the two figures are the same accounts read two ways, and 0.50&times; is
+the comparable basis, so that is the one used throughout this series.
+</p>
+
+<p>
+Debt grew 66.2% while profit grew 20.1% &mdash; more than three times as fast.
+Operating cash flow of &#8377;301.19 crore did not cover capital expenditure of
+&#8377;483.64 crore, leaving a hole of &#8377;182.45 crore that was filled with
+&#8377;260.59 crore of net new borrowing. And in that same year the dividend per
+share was raised 23.3%. A company can do all of this legitimately &mdash; it is
+building capacity, and capacity takes cash before it produces any. But it means
+the money reaching the family in FY26 was not surplus the business threw off. It
+came from lenders and from the market.
+</p>
+
+<p>
+Which raises the question of what the new capital is earning, and here the
+honest answer needs both halves stated. The company reports a headline ROACE of
+26.9%, and every broker note leads with it &mdash; but that number is computed
+across plants built decades ago and long since depreciated, mixed with plants
+half-built and half-empty. Taking FY26's incremental profit of &#8377;49.70
+crore against its incremental capital expenditure of &#8377;483.64 crore gives
+<b>10.3%</b>, against a cost of debt of around 8.8%. That is a real arithmetic
+comparison and it is a fair prompt for concern &mdash; but it is not a clean
+return-on-capital measure and should not be presented as one. A single year's
+capex does not operate for a full year, the incremental profit reflects price,
+volume, mix, interest and tax as well as the new assets, and the Karoli plant
+that absorbed the bulk of the spend has been sitting at 65% utilisation for a
+year against a 1.75x asset-turnover target. The defensible statement is that
+<b>new capital has not yet demonstrated it earns materially more than it costs
+to borrow</b>, and that the headline 26.9% describes the old business rather
+than the new.
+</p>
+
+<h2>So who is on the other side, and did they get paid</h2>
+
+<p>
+Every rupee of that &#8377;1,745.61 crore came from a buyer, and what happened
+to those buyers is the part no earnings call revisits. Two sales, thirteen
+months apart, tested it directly.
+</p>
+
+<p>
+In September 2024 the promoter sold 6.05% through an open-market offer for sale
+at a floor of &#8377;433, into a stock that had just closed at an all-time-high
+&#8377;469.25. Within ten sessions the price was &#8377;388.95 &mdash; down
+<b>17.1%</b>. In November 2025 he sold 4.00% as a single pre-arranged block:
+7,885,704 shares, matched almost share-for-share by SBI Mutual Fund taking
+7,861,739 at &#8377;473 for &#8377;371.86 crore. The price moved
+<b>&minus;0.01%</b>. Same seller, comparable size, thirteen months apart, and the
+only material difference was whether the shares went to a crowd or to one
+institution that had already agreed the price. On the same quantity, the avoided
+price impact is worth roughly &#8377;58 crore &mdash; an estimate, not a filed
+figure, but the 17.1% against 0.01% is filed and is not in dispute.
+</p>
+
+<p>
+Then look at what those buyers did afterwards, because that is the closest thing
+to a verdict the record contains. Allspring Emerging Markets Equity Fund, which
+took 2,559,155 shares in the quarter of the first sale, has held <b>exactly
+2,559,155 shares &mdash; the identical count &mdash; for seven consecutive
+quarters</b>. Not one share traded in two years. The SBI schemes that absorbed
+the second block sat frozen at 7,908,563 shares for three quarters. Over the very
+same window, holders who had <em>not</em> absorbed a promoter sale kept adding:
+Goldman Sachs went from 2,931,145 shares to 4,593,382, SBI Life from 2,594,587
+to 6,036,170, quarter after quarter. Same stock, same period, opposite behaviour.
+A position frozen at precisely the count it absorbed is not a view about the
+company. It is a view about the price that particular buyer paid.
+</p>
+
+<p>
+Both sales also landed in quarters that turned out, only with hindsight, to be
+local earnings peaks &mdash; the September 2024 quarter printed EPS of
+&#8377;3.41, a record not exceeded for four quarters; the December 2025 quarter
+printed &#8377;4.05, tying the all-time high, after which the next quarter fell
+10.4% and has not recovered it. Timing that lands twice at a high-water mark
+cannot prove intent, and this page does not assert any. It is simply the pattern
+the filings contain.
+</p>
+
+<p>
+The final test is the only one that settles whether any of this cost the public
+money, and it has to be answered separately for each entry point rather than as
+a single verdict, because the answers genuinely differ:
+</p>
+
+<div class="wrap">
 <table>
-  <tr>
-    <th>Financial Metric</th>
-    <th>FY25 (Mar 2025)</th>
-    <th>FY26 (Mar 2026)</th>
-    <th>Change</th>
-    <th>% Change</th>
-  </tr>
-  <tr>
-    <td>Revenue from operations</td>
-    <td>₹3,600.83 cr</td>
-    <td>₹4,176.32 cr</td>
-    <td>+₹575.49 cr</td>
-    <td>+16.0%</td>
-  </tr>
-  <tr>
-    <td>EBITDA (operating profit)</td>
-    <td>₹437.39 cr</td>
-    <td>₹540.59 cr</td>
-    <td>+₹103.20 cr</td>
-    <td>+23.6%</td>
-  </tr>
-  <tr>
-    <td>EBITDA margin</td>
-    <td>12.1%</td>
-    <td>12.9%</td>
-    <td>+0.8 pts</td>
-    <td>+6.6%</td>
-  </tr>
-  <tr>
-    <td>Profit after tax</td>
-    <td>₹247.62 cr</td>
-    <td>₹297.32 cr</td>
-    <td>+₹49.70 cr</td>
-    <td>+20.1%</td>
-  </tr>
-  <tr>
-    <td>PAT margin</td>
-    <td>6.9%</td>
-    <td>7.1%</td>
-    <td>+0.2 pts</td>
-    <td>+2.9%</td>
-  </tr>
-  <tr>
-    <td>Earnings per share</td>
-    <td>₹12.56</td>
-    <td>₹15.08</td>
-    <td>+₹2.52</td>
-    <td>+20.1%</td>
-  </tr>
-  <tr>
-    <td colspan="5" style="background: #f0f0f0; font-weight: bold;">BALANCE SHEET</td>
-  </tr>
-  <tr>
-    <td>Total equity</td>
-    <td>₹1,043.12 cr</td>
-    <td>₹1,311.10 cr</td>
-    <td>+₹267.98 cr</td>
-    <td>+25.7%</td>
-  </tr>
-  <tr class="highlight">
-    <td><b>Total borrowings</b></td>
-    <td><b>₹393.46 cr</b></td>
-    <td><b>₹654.06 cr</b></td>
-    <td><b>+₹260.60 cr</b></td>
-    <td><b>+66.2%</b></td>
-  </tr>
-  <tr class="highlight">
-    <td><b>Debt-to-equity ratio</b></td>
-    <td><b>0.377×</b></td>
-    <td><b>0.499×</b></td>
-    <td><b>+0.122×</b></td>
-    <td><b>+32.4%</b></td>
-  </tr>
-  <tr>
-    <td>Total assets</td>
-    <td>₹1,923.86 cr</td>
-    <td>₹2,556.80 cr</td>
-    <td>+₹632.94 cr</td>
-    <td>+32.9%</td>
-  </tr>
-  <tr>
-    <td colspan="5" style="background: #f0f0f0; font-weight: bold;">CASH FLOW & EXTRACTION</td>
-  </tr>
-  <tr>
-    <td>Operating cash flow</td>
-    <td>₹360.20 cr</td>
-    <td>₹301.19 cr</td>
-    <td>−₹59.01 cr</td>
-    <td>−16.4%</td>
-  </tr>
-  <tr>
-    <td>Capital expenditure (capex)</td>
-    <td>₹345.67 cr</td>
-    <td>₹483.64 cr</td>
-    <td>+₹137.97 cr</td>
-    <td>+39.9%</td>
-  </tr>
-  <tr>
-    <td>Free cash after capex</td>
-    <td>+₹14.53 cr</td>
-    <td>−₹182.45 cr</td>
-    <td>−₹196.98 cr</td>
-    <td>N/A</td>
-  </tr>
-  <tr>
-    <td>Dividend per share</td>
-    <td>₹1.50</td>
-    <td>₹1.85</td>
-    <td>+₹0.35</td>
-    <td>+23.3%</td>
-  </tr>
+<tr><th>Bought at</th><th>What that entry has done</th></tr>
+<tr><td><b>The IPO</b> &mdash; &#8377;282, Nov 2023</td><td class="hit">Ahead. Roughly &#8377;560 in August 2026, close to a doubling, while EPS grew faster still &mdash; so the multiple <em>compressed</em>, 45.6&times; at issue to around 34&times;. Buyers at the door were not overcharged relative to what arrived.</td></tr>
+<tr><td><b>The first sale</b> &mdash; &#8377;433 floor, Sep 2024</td><td class="miss">Behind for most of the period that followed. A 17.1% drop within ten sessions, and the windows opening on that date have struggled against gold plus a real-inflation floor.</td></tr>
+<tr><td><b>The second sale</b> &mdash; &#8377;473, Nov 2025</td><td>Unresolved. The next quarter fell 10.4%; the price has since recovered past it. Too recent to score, and it is reported here as unresolved rather than assumed.</td></tr>
 </table>
+</div>
 
-<p class="pull">
-  <b>Critical signal:</b> Debt grew 2.6× faster than profit (66.2% debt increase vs. 20.1% PAT increase).
-  Company cannot self-fund capex (OCF ₹301 cr < capex ₹484 cr). Issuing debt while increasing dividend.
-  JVs carrying ~₹530 crore of ₹654 crore total debt burden.
+<p class="note">
+An earlier version of this page presented a precise gold-versus-stock loss
+figure. That calculation is not reproducible without stating exact entry and
+exit dates, the ETF distribution treatment, and the inflation series used, so it
+has been withdrawn and replaced with the directional statement above until it
+can be rebuilt and shown in full. Gold is also not a risk-free asset, and a 10%
+real-inflation floor is a working assumption in this series, not an official
+statistic.
 </p>
+
+<div class="verdict">
+<b>What the mechanism actually is.</b> Not fraud, and not a rich multiple &mdash;
+the multiple here compressed while &#8377;2,069 crore reached the family. It is
+this: a genuine business is built over thirty years on &#8377;1.36 crore of real
+cash; reserves it truly earned are capitalised into an 84-fold share count that
+makes it listable at all; the listing supplies the one thing a private company
+lacks, which is a permanent crowd of buyers; and thereafter ownership converts to
+cash on any morning the family chooses, at a price set by the most optimistic
+buyer available, with no lender's consent, no statutory cap, no auditor's
+signature and no line in any financial statement. The public's money bought a
+share of future growth. The family's shares bought the present value of that
+same growth, in cash, today &mdash; and kept none of the risk that it arrives.
+Every step was disclosed. No step was ever connected to the next in any single
+document, which is the only reason it is not obvious.
+</div>
 
 <p>
-  <b>Equity investor performance:</b> Bought at IPO (Nov 2023) at ₹150/share. October 2025: flat at ₹150.
-  Gold ETF up 8.2%; inflation up 4.2%. Equity investor lost 12.4% vs. gold + inflation. Promoter extracted
-  ₹1.5 billion in same period while retaining 50% ownership (₹8.2 billion remaining stake).
+And that is why the historical comparison is worth making carefully rather than
+dismissing. A feudal landholder's income came from rent on land granted rather
+than bought, paid by tenants who carried the entire risk of a bad harvest. The
+resemblance is not in any of the specifics &mdash; it is in the separation of
+who bears the production risk from who collects the surplus, and in the way both
+arrangements pass intact to the next generation. It is a parallel about
+structure, not an accusation about conduct, and it is offered as an
+interpretation of the numbers above rather than as an additional fact.
 </p>
 
-<h2>The Feudal Parallel: Wealth Without Production Risk</h2>
-
-<p>
-  Medieval feudalism extracted via rent. Modern promoter extraction extracts via share sales + related-party
-  transactions. Both mechanisms preserve wealth in family for generations, separating control from risk.
-</p>
-
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>Medieval Feudalism</th>
-    <th>Modern Promoter Structure</th>
-  </tr>
-  <tr>
-    <td>Founder's capital</td>
-    <td>Land (granted, zero cost to lord)</td>
-    <td>₹1.36 crore (subscribed, minimal cash to promoter)</td>
-  </tr>
-  <tr>
-    <td>Multiplier mechanism</td>
-    <td>Land grants from king (no cost)</td>
-    <td>Bonus shares (20:1, then 3:1; no cost)</td>
-  </tr>
-  <tr>
-    <td>Result</td>
-    <td>Lord owns 1000 acres instead of 10</td>
-    <td>Promoter owns 50% (97.98M shares) instead of 2.03% (4M shares)</td>
-  </tr>
-  <tr>
-    <td>Extraction method</td>
-    <td>Rent from peasants</td>
-    <td>Share sales + related-party rent + dividend</td>
-  </tr>
-  <tr>
-    <td>Risk separation</td>
-    <td>Peasants bear production risk; lord keeps surplus</td>
-    <td>Public shareholders bear business risk; promoter keeps extraction</td>
-  </tr>
-  <tr>
-    <td>Wealth persistence</td>
-    <td>Inheritance over generations</td>
-    <td>Gift transfers (sons → father); gift transfers after listing (consolidation)</td>
-  </tr>
-  <tr>
-    <td>Time horizon</td>
-    <td>700+ years</td>
-    <td>35 years, accelerating at 49.5× post-listing</td>
-  </tr>
-</table>
-
-<p>
-  The historical parallel is not coincidental. Both structures exploit asymmetric information: the lord
-  owns land whose value peasants create; the promoter owns shares whose value public shareholders
-  validate via market prices. Neither asset cost the owner proportional capital. Both became liquid
-  extraction vehicles once the market (or heir) valued them.
-</p>
-
-<p class="pull">
-  <b>The key insight:</b> Bonus inflation is not cosmetic. Without it, Kuldip owns 2% of the company.
-  With it, he owns 50%. Same company value, same business performance, but his extractable wealth differs
-  by ₹13.2 billion (the difference between 2% and 50% of ₹29.6B company valuation). That ₹869 crore
-  difference is entirely from bonus inflation enabling him to capture the entire market re-pricing.
-</p>
+<div class="corr">
+<b>Corrections to this page, August 2026.</b> An earlier version stated the IPO
+price as &#8377;150 and a per-share cost basis of &#8377;0.000069, and reported
+the stock as flat at &#8377;150 in October 2025. All three were wrong: the issue
+price was <b>&#8377;282</b>, the RHP-certified cost of acquisition is
+<b>&#8377;0.02</b>, and the stock was trading around &#8377;450&ndash;500 in
+October 2025. It also stated that bonus issues took the promoter's ownership
+from about 2% to about 50% &mdash; that is not something a pro-rata bonus can do,
+and the section above has been rewritten to explain what a bonus issue actually
+changes. Totals have been reconciled to the main report
+(&#8377;2,069.00 crore in aggregate, of which &#8377;1,745.61 crore came from
+the market and &#8377;323.39 crore from company cash), replacing earlier figures
+of &#8377;1,978 crore and &#8377;1,469 crore. The extraction-rate step-change is
+<b>11.8&times;</b>, not the 49.5&times; previously shown. Debt-to-equity for FY26
+is stated as 0.50&times; on a comparable basis. These corrections stay on the
+page rather than being edited out silently.
+</div>
 
 <hr>
 
 <p class="fine">
-  Research, not investment advice. No price targets, no recommendations, no position in any security discussed.
-  Every figure traces to audited financial statements filed with BSE/NSE.
+  Research, not investment advice. No price targets, no recommendations, no
+  position in any security discussed. Sources: ASK Automotive RHP (filed June
+  2023, including the B.B. &amp; Associates cost-of-acquisition certificate);
+  audited consolidated financial statements FY25 and FY26 (Walker Chandiok &amp;
+  Co LLP, unmodified opinion); quarterly results and earnings-call transcripts
+  filed with BSE and NSE, July 2024 &ndash; May 2026; NSE and BSE shareholding
+  pattern and bulk/block-deal disclosures; Trendlyne monthly mutual-fund
+  holdings. Figures are consolidated unless stated. Where a figure could not be
+  independently verified it is described as an estimate in the sentence that
+  contains it.
   &nbsp;&middot;&nbsp; <a href="ask-automotive-rathee.html">ASK Automotive full report</a>
   &nbsp;&middot;&nbsp; <a href="markets-as-atm.html">Public markets as the family ATM</a>
   &nbsp;&middot;&nbsp; <a href="promoters.html">Promoter reports index</a>
