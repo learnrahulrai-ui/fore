@@ -1,0 +1,16 @@
+# Research working notes stay local and are never published.
+# These are process material - raw findings, draft ledgers, session manifests -
+# not finished, cited findings. Only the published HTML reports belong in this
+# public repo. See commit 8c40083.
+promoter-analysis-updated.txt
+foreign-subsidiary-settlement-trick.txt
+DEPLOYMENT-SUMMARY.txt
+FILES-UPDATED-2026.txt
+
+# Any future working notes
+*-working-notes.txt
+*-raw.md
+
+# Local Cloudflare Wrangler state
+.wrangler/
+node_modules/
