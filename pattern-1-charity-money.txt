@@ -1,64 +1,239 @@
-WHEN LAW COMPELS A GIFT, WHO CHOOSES WHERE IT LANDS?
+WHEN LAW COMPELS A GIFT, WHO DECIDES WHERE IT LANDS?
 
-A pattern worth checking in any Indian business you hold pieces of.
-Worked through one company's own filings, FY21 to FY26:
+Twelve ways money meant for strangers stays close to home. Every one
+of them permitted. Each carries a test you can run on any Indian
+business in an afternoon, needing no paid access and no source inside.
+
+Worked against one company's own filings, FY21 to FY26:
 ASK Automotive Limited (NSE: ASKAUTOLTD).
 
 August 2026.
 
-================================================================
+===============================================================
 
 
-START WITH WHAT COMPULSION COVERS, AND WHAT IT LEAVES ALONE
+WHAT DOES COMPULSION ACTUALLY REACH?
 
 A lord in a bad year could be made to open a granary. Compulsion ran
 to opening it. No writ named which village ate, or whose steward
 carried grain, or who stood in a square handing out sacks and got
-thanked for it by name.
+thanked by name.
 
-India runs a version of that rule on businesses. Any business past a
-certain size must spend a share of what it earns -- near two rupees in
-each hundred of average earnings across three prior years -- on public
-good. Schools, water, training, sport, care of sick people. Spending is
-no choice at all. A board skipping it must explain itself in writing
-and carry that explanation into a yearly report where anyone can read
-it.
+India runs a version of that on businesses. Cross any one of three
+lines -- worth above 500 crore, or takings above 1,000 crore, or
+earnings above 5 crore in a year -- and you must spend near two rupees
+in each hundred of average earnings across three prior years on public
+good. Schools, water, work training, sport, care of sick people, care
+of land and air. A board must form a committee for it. A board skipping
+it must explain itself in writing inside a yearly report where anyone
+can read that explanation.
 
-So set down what compulsion reaches, and what it does not:
+So set down, with care, what compulsion reaches and what it leaves
+alone. Everything after this page turns on that division.
 
-    Compelled  --  that money leaves a business.
-    Compelled  --  that an amount matches a formula.
-    Compelled  --  that a report names each project funded.
-    Open       --  whose hands carry that money.
+    REACHED   -- that money leaves a business
+    REACHED   -- what amount leaves, by formula
+    REACHED   -- that a yearly report names each project
+    REACHED   -- that unspent sums move to a separate account
 
-That last line is a whole pattern on its own.
+    OPEN      -- whose hands carry it
+    OPEN      -- what work it pays for, among a broad permitted list
+    OPEN      -- which towns receive it
+    OPEN      -- when across three years it gets laid out
+    OPEN      -- how much counts as cost of running a carrier
+    OPEN      -- whose ground a building sits on
+    OPEN      -- what goods given in place of cash are worth
+    OPEN      -- who sits on both a giving side and a carrying side
 
-Money must go. Nobody is told where. A board picks who carries it, and
-picks afresh each year, and no rule says a carrier must be a stranger.
-Law permits a business to set up its own trust and route money through
-that. A carrier registers once with a national registry and receives a
-number that follows it thereafter. Those numbers run in a fixed shape:
-CSR followed by eight digits.
+Four reached. Eight open.
 
-Which hands a reader one clean test, needing no training and no
-guesswork.
+Every pattern below lives inside one of those eight. None of them
+requires breaking a rule. That is what makes them worth naming: a
+reader hunting for wrongdoing finds nothing, because there is none to
+find. What there is instead is a compelled outflow whose destination
+nobody compels.
 
-    Open a yearly report. Find a section listing money given away.
-    Count how many distinct registry numbers appear across every
-    project in it.
+One more thing law permits, and it matters more than any other single
+provision. A business may route this money through a trust, society or
+body **it founded itself**, and such a body is spared a test applied to
+strangers -- an outside carrier must show three years of track record,
+while a carrier a business set up need show none. Law made a household
+vehicle easier to use than an unrelated one.
 
-A business spreading money across a dozen bodies chosen on merit shows
-a dozen numbers. A business handing all of it to one pair of hands
-shows one.
-
-
-================================================================
+A carrier registers once and receives a number that follows it after.
+Those numbers run in a fixed shape: CSR followed by eight digits.
 
 
-SO WHAT DOES ONE COMPANY'S REPORT SHOW?
+===============================================================
 
-Money ASK Automotive gave away, by year, in crore of rupees, as filed
-in its own accounts:
+
+SO WHAT CAN BE DONE INSIDE WHAT LAW LEAVES OPEN?
+
+Twelve patterns, grouped by which open space each one uses. Each
+carries a tell -- a thing to look for -- and each tell sits in a
+document anyone can pull.
+
+
+-- WHO CARRIES IT --
+
+1. ONE PAIR OF HANDS
+
+   All of it, or near all, goes to a single body a business or its
+   household founded. Nothing gets shared out among carriers chosen on
+   merit, because no contest ever happens.
+
+   Why bother: money is gone to holders of pieces whichever way it
+   goes. What a household gains is a different thing from cash -- a
+   standing pot it decides on, a name across many towns, seats at a
+   table, and thanks in a square. None of that shows in any account.
+
+   TELL: count distinct registry numbers across every project in a
+   yearly report. A dozen carriers chosen on merit show a dozen
+   numbers. One number is a finding.
+
+
+2. A TRUST OLDER THAN A RULE
+
+   Many households ran a charitable trust well before 2014, paid for
+   out of household money. After 2014 a company obligation gets routed
+   into that same trust. A household keeps its name on a thing that
+   strangers now fund.
+
+   TELL: set a trust's founding year against 2014. Founded well
+   before, funded by a company after, with a household name attached,
+   is a vehicle that changed payer while keeping owner.
+
+
+3. SAME PEOPLE ON BOTH SIDES
+
+   A committee inside a business decides where money goes. A board
+   inside a carrier decides how it gets spent. Nothing stops one set
+   of people holding both seats.
+
+   TELL: take names on a giving committee from a yearly report, take
+   names of trustees from a trust's own filings, and lay one list
+   against another.
+
+
+-- WHAT IT BUYS --
+
+4. A ROOF ON GROUND SOMEONE OWNS
+
+   Money may build lasting things -- a school hall, a health room, a
+   water tank. Rules say such a thing must be held by a registered
+   body or a public authority. Rules say nothing about whose ground it
+   stands on. Strangers pay for a building; ground under it belongs to
+   whoever it belonged to, worth more with a building on it.
+
+   TELL: for any lasting thing built, ask where. Then ask who owns
+   that plot.
+
+
+5. GOODS VALUED BY WHOEVER GIVES THEM
+
+   An obligation may be met in part with goods rather than cash. A
+   giver sets a worth. Goods a business makes itself cost less to make
+   than a price they carry.
+
+   TELL: does a report show part of an obligation met in kind, and at
+   what worth, against what those goods cost to produce.
+
+
+6. A NAME ON A FIELD
+
+   Sport, festivals and events carry banners, and thanks get spoken
+   aloud in front of crowds. Rules bar spending done for advertising
+   gain, and permit spending that promotes sport. A line between them
+   is drawn by whoever writes a report.
+
+   TELL: does a business name or mark appear on whatever this money
+   paid for.
+
+
+-- WHEN IT MOVES --
+
+7. WORK CALLED ONGOING
+
+   Since 2021, money not laid out inside a year cannot sit idle in a
+   business. It must move out. But work declared ongoing may hold
+   money in a ring-fenced account for three years. A carrier holds a
+   pot. A calendar bends.
+
+   TELL: watch balances in that separate account across years, and
+   watch whether work stays ongoing for a long while.
+
+
+8. LUMPY YEARS AGAINST A SMOOTH FORMULA
+
+   An obligation runs on a three-year average, so it should climb and
+   fall in gentle steps. Spending that jumps by several times from one
+   year to a next has an explanation somewhere, and a reader is owed
+   it.
+
+   TELL: set yearly sums in a row and look at swings. Then look for
+   words explaining them. Absence of words is itself an answer.
+
+
+-- WHAT COMES BACK --
+
+9. FIVE IN EACH HUNDRED FOR RUNNING COSTS
+
+   A carrier may book cost of running itself against this money, up to
+   five rupees in each hundred. On a spend of four and a half crore
+   that is above twenty lakh a year of wages, rent and travel inside a
+   trust. Should a trust employ kin, or stand on household ground,
+   strangers pay those wages and that rent.
+
+   TELL: read declared running cost each year. Sitting at a ceiling
+   year after year suggests a budget being used, not a cost being
+   incurred.
+
+
+10. A CARRIER THAT BUYS FROM A GIVER
+
+    Sharpest of all, and hardest to see. A trust spends its money
+    buying goods or services from a business that funded it, or from
+    another firm a household holds. Money leaves under one name and
+    returns under another.
+
+    TELL: a trust's own filed accounts, where obtainable, showing whom
+    it paid. This one cannot be seen from a company side at all, so
+    absence of evidence here means nothing either way.
+
+
+-- WHERE IT LANDS --
+
+11. TOWNS NEAR HOME
+
+    Rules invite spending in a local area, which is sound policy and
+    no criticism. An effect, though, is that standing gets built in
+    places where a household already has standing, paid for by people
+    who live nowhere near.
+
+    TELL: list towns funded. Set them against where works stand and
+    where a household comes from.
+
+
+12. PEOPLE WHO ALSO WORK FOR YOU
+
+    Money spent only on staff does not count toward an obligation. But
+    training, schooling and health camps around a plant serve a pool a
+    business hires from. A boundary is soft.
+
+    TELL: who are named beneficiaries, and how far do they live from a
+    gate.
+
+
+===============================================================
+
+
+WHAT SHOWS IN ONE COMPANY'S PAPERS, AND WHAT DOES NOT?
+
+Now run all twelve against ASK Automotive, and be strict about which
+patterns are evidenced, which are absent, and which cannot be checked
+from outside. Being strict here matters more than scoring a point.
+
+Money given away, by year, in crore of rupees, as filed:
 
     FY21      1.02
     FY22      3.89
@@ -69,133 +244,150 @@ in its own accounts:
              -----
     Six yrs  15.08
 
-Projects those sums paid for, as its yearly report lists them:
+Work it paid for, as a yearly report lists it:
 
-    Training for work            Jhajjar
-    Schooling                    Gurgaon, Rewa, Ghaziabad,
-                                 Prayagraj, Delhi
-    Village sport                Faridabad, Sonipat, Bhiwani
-    Care of land and air         Gurgaon
+    Training for work        Jhajjar
+    Schooling                Gurgaon, Rewa, Ghaziabad,
+                             Prayagraj, Delhi
+    Village sport            Faridabad, Sonipat, Bhiwani
+    Care of land and air     Gurgaon
 
 Nine towns. Four kinds of work. Six years.
 
-Now run that test. Count registry numbers across all of it.
+Count registry numbers across all of it:
 
-    One.
+    One.  CSR00000244 -- AHSAAS.
 
-    CSR00000244 -- AHSAAS.
 
-Not most of that money. Not a large share of it. Every rupee, across
-four kinds of work and nine towns, passed through one pair of hands.
+PATTERN 1 -- ONE PAIR OF HANDS. Present, and plain.
 
-Two separate documents carry those two halves, and a reader should
+Not most of that money. Not a large share. Every rupee, across four
+kinds of work and nine towns, passed through one carrier.
+
+Two separate documents carry two halves of that, and a reader should
 know which carries which. A section on money given away holds that
 single registry number. A list of payments to kin, running six years,
-holds a line named for AHSAAS with a sum against each year -- those
-six sums above, adding to 15.08 crore. Neither document says what a
-pair of them says together.
+holds a line named for AHSAAS with a sum against each year -- those six
+sums above, adding to 15.08 crore. Neither document says what a pair of
+them says together.
 
-
-================================================================
-
-
-AND WHOSE HANDS ARE THOSE?
-
-This part needs no inference, no digging through a registry, no
-guessing from surnames. Two documents ASK filed itself answer it, and
-they answer it in plain words.
-
-First, a filing lodged with an exchange describes that trust as:
+Whose hands those are needs no inference. Two filings answer it in
+plain words. A filing lodged with an exchange calls that trust:
 
     "born out of chairman & MD Kuldip Singh Rathee and his wife"
 
-Second, a list of payments to kin -- a schedule every listed business
-must publish, naming money that went to people connected to whoever
-runs it -- carries AHSAAS inside it, under a heading covering bodies:
+And a list of payments to kin -- a schedule every listed business must
+publish, naming money that went to people connected to whoever runs it
+-- carries AHSAAS under a heading covering bodies:
 
     "in which directors of the Company and their relatives are able
      to exercise significant influence"
 
-Read those two together and a shape settles.
-
-A duty owed by a business to strangers gets discharged through a body
-a chairman and his wife brought into being, which that business's own
-accountants classify as connected to whoever runs it. Both facts are
-published. Neither is buried. They sit in separate documents that few
-readers ever hold at one time.
+So a duty owed to strangers gets discharged through a body a chairman
+and his wife brought into being, which a business's own accountants
+file under connected parties. Both facts are published. Neither is
+buried. They sit apart, and few readers hold both at once.
 
 
-================================================================
+PATTERN 8 -- LUMPY YEARS. Present, and unexplained.
+
+Look again at those six sums. An obligation built on a three-year
+average should walk in gentle steps. This one does not:
+
+    FY22 3.89  ->  FY23 0.71    a fall near 82 in 100
+    FY23 0.71  ->  FY25 3.72    above five times, across two years
+
+A formula does not produce that shape on its own. Something else does
+-- catch-up after a thin year, work bunching, or a carrier receiving in
+one year what it spends across several. Any of those may be true. None
+of them appears in words a reader can find. That is a question to put
+to a board, not a charge to lay against one.
 
 
-WHAT DOES AND DOES NOT FOLLOW FROM THAT
+PATTERN 11 -- TOWNS NEAR HOME. Present, stated without complaint.
 
-Being strict here matters more than scoring a point, so take both
-sides.
-
-What cannot be said:
-
-    Nothing above shows a rupee went astray. Those schools may be
-    real schools. That training may train. A trust founded by a
-    family may run better than a stranger would, since a founder
-    watches what carries his name. Law permits every step. An
-    auditor signed without objection. Many businesses do this, and
-    a family foundation is an ordinary vehicle across much of a
-    trading world.
-
-What does follow:
-
-    A compelled outflow becomes a free choice about destination, and
-    that choice went one way, six years running, without exception
-    and without any sign of a contest.
-
-    Money that has left a business is gone to whoever holds pieces of
-    it, whichever body carries it. What a household gains is a
-    different thing from cash: a standing corpus it decides on, a
-    name attached to nine towns of good work, seats at a table, and
-    thanks in a square. None of that shows in any account.
-
-    A sum tracks earnings by formula, so it swells as a business
-    swells. FY26 at 4.45 crore is largest yet. It is an income that
-    grows on its own, needing no fresh decision.
-
-    Nobody outside can check whether merit chose that carrier,
-    because no competing carrier was ever named.
+Of nine towns named, five sit in Haryana -- Jhajjar, Gurgaon,
+Faridabad, Sonipat, Bhiwani -- and works themselves stand at Gurugram.
+Remaining four spread across Delhi and two other states. Law invites
+local spending and this is what local spending looks like. It is
+recorded here so a reader can weigh where standing gets built and who
+paid to build it.
 
 
-================================================================
+PATTERNS 2, 3, 4, 5, 6, 7, 9, 10, 12 -- NOT CHECKED HERE.
+
+Each needs a document this work has not pulled: a founding year for
+AHSAAS, its trustee list, its own filed accounts, plot ownership under
+anything built, running costs declared against a five in a hundred
+ceiling, balances in a ring-fenced account, named beneficiaries.
+
+Absence of a finding is not a finding. None of those nine is asserted
+against this company, and a reader should treat every one as open.
 
 
-HOW TO RUN THIS ON ANY BUSINESS IN TEN MINUTES
+WHAT CANNOT BE SAID AT ALL
+
+Nothing above shows a rupee going astray. Those schools may be real
+schools and that training may train. A trust founded by a household may
+run better than a stranger would, since a founder watches a thing
+carrying his name. Every step is permitted. An auditor signed without
+objection. Across much of a trading world a household foundation is an
+ordinary vehicle, and many Indian businesses do this.
+
+WHAT DOES FOLLOW
+
+A compelled outflow becomes a free choice of destination, and that
+choice went one way for six years running, with no competing carrier
+ever named.
+
+Money already gone is gone to holders of pieces whichever body carries
+it. What a household gains sits outside every account: a pot, a name, a
+table, and thanks.
+
+A sum tracks earnings by formula, so it swells as a business swells.
+FY26 at 4.45 crore is largest yet. It is an income climbing on its own,
+needing no fresh decision from anyone.
+
+
+===============================================================
+
+
+HOW TO RUN THIS YOURSELF, ON ANY BUSINESS, IN AN AFTERNOON
 
 Nothing below needs paid access, training, or a source inside.
 
-    1.  Pull a yearly report. Find a section on money given away.
-        It sits near a back, among annexures.
+  1. Pull a yearly report. Find a section on money given away, near a
+     back, among annexures.
 
-    2.  Count distinct registry numbers, shape CSR00000000. One
-        number across many projects is a finding. A dozen numbers
-        is not.
+  2. Count distinct registry numbers, shape CSR00000000. One number
+     across many projects is a finding. A dozen is not.
 
-    3.  Take whatever name carries that number, and search a list of
-        payments to kin in that same report. If a name appears there,
-        a business has told you itself that a carrier is connected.
+  3. Take whatever name carries that number and search a list of
+     payments to kin in that same report. A name appearing there means
+     a business has told you itself that a carrier is connected.
 
-    4.  Search a whole report for that carrier's name. A filing
-        somewhere often states who founded it, in words as plain as
-        those quoted above.
+  4. Search a whole report for that carrier's name. Some filing often
+     states who founded it, in words as plain as those quoted above.
 
-    5.  Set sums by year beside earnings by year. A ratio holding
-        near two in a hundred says a business spends what law asks
-        and no more, and that a carrier holds an income which climbs
-        as a business climbs.
+  5. Set yearly sums in a row. Gentle steps match a formula. Swings of
+     several times need words, and if no words exist, that is worth
+     asking about.
 
-If steps two, three and four all land on one name, you have this
-pattern. What you do with it is a separate question, and this page
-takes no view on that.
+  6. Read declared running cost against a five in a hundred ceiling.
+     Sitting at a ceiling year after year is worth a question.
+
+  7. List towns funded. Set them against where works stand.
+
+  8. Look up that carrier in a registry of trusts and societies. A
+     founding year before 2014, and trustee names matching a board,
+     each answer a question above.
+
+Should steps two, three and four land on one name, you have a first
+pattern. What you do after that is a separate matter, and this page
+takes no view on it.
 
 
-================================================================
+===============================================================
 
 
 SOURCES
@@ -203,16 +395,20 @@ SOURCES
 Every figure and every quoted passage comes from documents ASK
 Automotive filed itself and anyone can pull:
 
-  - Yearly reports FY21 through FY26, sections on money given away
+  - Yearly reports FY21 through FY26: sections on money given away,
     and lists of payments to kin.
-  - Audited group accounts FY21 through FY26, signed without
-    objection by Walker Chandiok & Co LLP.
+  - Audited group accounts FY21 through FY26, signed without objection
+    by Walker Chandiok & Co LLP.
   - A filing lodged with BSE describing AHSAAS.
 
-Sums are as filed, in crore of rupees, and add to 15.08 across six
+Sums are as filed, in crore of rupees, adding to 15.08 across six
 years. Passages inside quotation marks stand word for word as filed.
+Descriptions of what law requires are a plain reading of Section 135 of
+India's Companies Act 2013 and rules under it, including changes made
+in 2021; check current text before relying on any threshold or ceiling,
+since these get revised.
 
 Research, not advice on where to put money. No target prices, no
 recommendations, no holding in anything named. Where something could
-not be checked, this page says so in a sentence carrying it, and
-claims nothing about what any person intended.
+not be checked, this page says so in a sentence carrying it, and claims
+nothing about what any person intended.
