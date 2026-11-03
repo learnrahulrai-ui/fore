@@ -17,6 +17,9 @@
 // Wikipedia so the app still runs.
 // ---------------------------------------------------------------------------
 
+// Per-ticker notes pad. Separate module so this file stays about analysis.
+import { journal } from './journal.js';
+
 const ALLOWED_ORIGIN = 'https://learnrahulrai-ui.github.io';
 
 // Cloudflare Workers AI models.
@@ -115,6 +118,14 @@ function json(obj, status = 200) {
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+
+    // Notes pad lives under /n. Checked before anything else so the analysis
+    // paths below are untouched by it.
+    const url = new URL(request.url);
+    if (url.pathname === '/n' || url.pathname.startsWith('/n/')) {
+      return journal(request, env, url);
+    }
+
     // Health/version probe — makes a deploy verifiable. Seeing the model name
     // here (gemini-3.5-flash) confirms the new build is actually live. No
     // secrets are exposed: only the model id and feature flags.
