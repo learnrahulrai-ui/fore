@@ -1,0 +1,227 @@
+TATA TECHNOLOGIES — EXECUTION TRACE
+Cash movement between hands, 2018 to 2026, stepped like a debugger.
+LINE = date of the filed event. CALLER = the earlier frame that made this one possible.
+Every figure is filed or is derived on the frame that derives it. Compiled 3 Nov 2026.
+
+LEGEND   IN/OUT = variable state before and after · CASH = whose hand to whose hand
+         ASSERT = a check that must hold · UNVERIF = not established, do not rely on
+         [C] two or more sources  [S] one source  [?] sources conflict  [X] excluded, see frame 02
+
+================================================================================================
+
+#01  LINE 2018          CALL  client_onboard(VinFast)                              CALLER —  (root)
+     IN    clients = {Tata Motors, JLR, ...}
+     WORK  A Vietnamese maker of electric cars has no vehicle platform of its own. It hands
+           design, engineering and manufacturing setup to this company wholesale. Not a sale of
+           software off a shelf — a whole car programme outsourced.
+     OUT   clients += VinFast ; dependency(VinFast) = rising
+     DATA  Named a top-five client in offer papers five years later.                        [C]
+     NOTE  This frame is the seed. Every frame from #16 inherits from it.
+
+#02  LINE 2022-09..2023-05                                                    [X] NOT IN TRACE
+     An engineer's account of component failures on this programme, and of his later dismissal,
+     was reported by BBC in Dec 2024. An employment tribunal has not concluded. Both companies
+     declined to comment. A separate NHTSA review of VF8 concerns Lane Keep Assist, which is a
+     DIFFERENT system from chassis and suspension. No authority has linked either to any crash.
+     EXCLUDED because this trace runs on filed facts only, and nothing below needs this frame.
+
+#03  LINE 2023-03-13    CALL  drhp_file()                                          CALLER #01
+     IN    company.listed = false ; TataMotors.holding = 74.4%                              [S]
+     WORK  Draft offer papers lodged. A clock starts. Everything after this is a sale being built.
+     OUT   offer.state = DRAFT
+     UNVERIF 74.4% is a press figure, not read from a filing here.
+
+#04  LINE 2023-08-15    CALL  vinfast_lists_in_america()                           CALLER #01
+     WORK  A customer sells its own slips in New York. Its price runs up about 700 per cent.
+     OUT   VinFast.price = peak ; perceived_quality(client_book) = high                     [S]
+
+#05  LINE 2023-09..11   CALL  vinfast_price_collapse()              CALLER #04 · RESUMES #04
+     IN    VinFast.price = peak
+     WORK  That same price falls by ABOVE 90 IN EACH HUNDRED from its peak, amid claims about
+           sales figures and build quality. A largest non-family customer of a company about to
+           sell slips is now visibly in trouble.
+     OUT   VinFast.price = peak × 0.10 ; risk(client_concentration) = VISIBLE TO ANYONE       [C]
+     ASSERT this completes BEFORE #10 allots a single slip                          -> HOLDS
+
+#06  LINE 2023-10       CALL  presale_block(buyer=TPG-led, pct=9.9)                CALLER #03
+     IN    TataMotors.holding = 74.4% ; VinFast already collapsed (#05)
+     WORK  A parent sells 9.9 in a hundred privately, six weeks before a public sale. TPG takes
+           9, a Ratan Tata endowment 0.9. A negotiated price, not a bid one.
+     CASH  TPG & endowment -> Tata Motors : Rs 1,613.70 cr                                   [C]
+     DERIVE 9.9% of 40.5cr slips = 4.01cr slips ; 1613.70cr / 4.01cr = Rs 402 PER SLIP
+     OUT   TPG.cost_basis = ~Rs 402 ; TPG.holding = 9.00%
+     UNVERIF Rs 402 is derived here, not filed. Assumes 40.5cr slips existed in October.
+
+#07  LINE 2023-11-13    CALL  rhp_file()                            CALLER #03 · RESUMES #03
+     WORK  Final offer papers lodged. They NAME VinFast as a main customer and name dependence
+           on five clients as a risk. The thing that is about to go wrong is printed in advance.
+     OUT   offer.state = FINAL ; disclosure(VinFast_risk) = PUBLISHED                        [C]
+     ASSERT risk was disclosed before allotment                                     -> HOLDS
+
+#08  LINE 2023-11-16    CALL  price_band_set(475, 500)                             CALLER #07
+     OUT   offer.band = 475..500                                                             [C]
+     NOTE  Band top is Rs 500 against Rs 402 paid six weeks earlier at #06  = +24.4 per cent.
+
+#09  LINE 2023-11-22..24 CALL book_build()                                         CALLER #08
+     WORK  Bidding runs three days. Everything at #05 and #07 is public throughout.
+     OUT   book = 69.43x overall ; QIB = 203.41x ; retail = 16.5x ; anchor = Rs 791 cr        [C]
+     ASSERT buyers bid with the client risk already published                        -> HOLDS
+
+#10  LINE 2023-11-24    CALL  allot(price=500)                      CALLER #09 · RESUMES #07
+     IN    slips_outstanding = 40.5 cr
+     WORK  ** THE CENTRAL FRAME. ** Slips already held change hands. NO NEW SLIPS ARE CUT.
+     CASH  ~ thousands of buyers -> Tata Motors (11.41%), Alpha TC (2.4%), TCGF (1.2%)
+           Rs 3,042.50 cr                                                                    [C]
+     OUT   slips_outstanding = 40.5 cr   (UNCHANGED)
+     ASSERT company.account_delta == 0                                        -> HOLDS, Rs 0
+     DATA  Tata Motors 4,62,75,000 slips · Alpha TC 97,16,853 slips
+     WORK  Read as a field: a man sells 15 bighas of his 100 to villagers who pool money. The
+           farm gets no well, no tractor, no bund. His pocket holds their money.
+     UNVERIF the split of 3,042.50 cr between three sellers is not separately filed in sources read.
+
+#11  LINE 2023-11-30    CALL  list()                                CALLER #10 · RESUMES #10
+     IN    allotted_price = 500
+     WORK  Slips become buyable by anyone. First trade opens 140 IN EACH HUNDRED above allotment.
+     OUT   open = 1200 ; high = 1400 ; close = ~1314                                     [C][?]
+     CASH  whoever bought at open -> whoever was allotted at 500
+     NOTE  Against Rs 648 on 2026-11-03: open -46.0% · high -53.7%. See #26.
+
+#12  LINE 2023-11-30    CALL  intraday(NK Securities Research)      CALLER #11 · RESUMES #11
+     DATA  BUY 43,99,322 @ 1,338  and  SELL 43,99,322 @ 1,341 — same count, same day, Rs 3 apart [S]
+     WORK  A book is made in both directions on day one. Recorded for completeness; it moves no
+           ownership and is not part of a cash chain.
+
+#13  LINE FY24          CALL  harvest()                                            CALLER #10
+     OUT   revenue = 5,117 cr (+15.9%) ; profit = 679 cr (+8.8%) ; kept per 100 = 13.27       [C]
+     ASSERT profit(FY24) > profit(any other year on record)                 -> HOLDS. THIS IS PEAK.
+     NOTE  A best harvest falls in a FIRST FULL YEAR AFTER the sale at #10, not before it.
+
+#14  LINE 2024-08-23    CALL  block_exit(Alpha TC Holdings)         CALLER #10 · RESUMES #10
+     IN    AlphaTC.holding = 4.34% (residue after #10)
+     CASH  institutional buyers -> Alpha TC : 99,10,136 slips @ Rs 1,014 = Rs 1,004.89 cr     [C]
+     OUT   AlphaTC.holding = 0
+     NOTE  Price Rs 1,014 sits at a local high. Volume spikes on the chart at this date.
+
+#15  LINE 2024-08-27    CALL  block_exit(TPG, tranche=1)            CALLER #06 · RESUMES #06
+     CASH  Copthall Mauritius (40,10,579 @1,013) + Ghisallo Master Fund (31,22,686 @1,013)
+           + others -> TPG : 1,21,29,489 slips @ Rs 1,014 = Rs 1,229.93 cr                    [C]
+     OUT   TPG.holding = 9.00% -> 6.01%
+     ASSERT exit price 1,014 vs cost 402 at #06                        -> +152 per cent, held 10 months
+
+#16  LINE FY25          CALL  vinfast_rampdown()                    CALLER #01 · RESUMES #05
+     WORK  ** THE RISK AT #07 ARRIVES. ** Brokers put the VinFast account ABOVE 90 PER CENT
+           LOWER across the year. Work elsewhere grew near 15 per cent, so this is one named
+           customer and not a general collapse.
+     OUT   revenue = 5,168 cr (+1.0%)  <- growth collapses from +15.9% at #13
+           profit = 677 cr (-0.3%) ; captive_share(TataMotors+JLR) = RISES                 [S]
+     ASSERT the thing disclosed at #07 is the thing that happened                   -> HOLDS
+     NOTE  Losing the OUTSIDE customer made the OTHER disclosed risk worse, not better.
+
+#17  LINE 2025-04-29    CALL  block_exit(TPG, tranche=2)            CALLER #06 · RESUMES #15
+     CASH  buyers -> TPG : 1,58,63,806 slips @ Rs 673 = Rs 1,067.63 cr                        [C]
+     DATA  SAST filing 2025-05-02 records the same block: -1,58,63,806 = 3.90 per cent        [C]
+     NOTE  Price now Rs 673, down from 1,014 at #15. Exiting into weakness, not strength.
+
+#18  LINE 2025-06-04    CALL  block_exit(TPG, tranche=3)            CALLER #06 · RESUMES #17
+     CASH  buyers -> TPG : 85,16,499 slips @ Rs 749 = Rs 637.89 cr                            [C]
+     OUT   TPG.holding = 0   ** POSITION CLOSED **
+     RETURN TPG round trip:  paid ~Rs 1,467 cr at #06  ->  received Rs 2,935.45 cr
+            net +Rs 1,468 cr  =  2.00x in about 18 months, on 3,65,09,794 slips (9.01%)
+     ASSERT every holder who entered BEFORE the public has now exited             -> HOLDS
+
+#19  LINE 2025-06       READ  register()                                           CALLER #11
+     OUT   count(slip_holders) = 14,11,035   ** PEAK **                                       [C]
+
+#20  LINE FY26          CALL  harvest()                             CALLER #16 · RESUMES #13
+     OUT   revenue = 5,506 cr (+6.5%) ; profit = 547 cr (-19.2%) ; kept per 100 = 9.93        [C]
+     ASSERT profit(FY26) < profit(FY23, the last year shown to buyers at #07)  -> HOLDS, -12.4%
+     COUNTER cash generated = 776 cr against profit 547 cr = 142 per 100. Free cash 743 cr.
+            This CUTS AGAINST a suspicious reading and is printed at the same size.           [C]
+
+#21  LINE quarter to 2025-12  CALL anomaly()                                       CALLER #20
+     DATA  other income = -125 cr ; profit before tax = 23 cr ; tax = 71% ; profit = 7 cr     [C]
+     UNVERIF cause not established here. Flagged so a reader does not trip over it.
+
+#22  LINE 2026-01..02   READ  price()                                              CALLER #20
+     OUT   price = Rs 507   ** 52-WEEK LOW **                                                 [C]
+
+#23  LINE 2026-03..08   CALL  price_rally()                         CALLER #22 · RESUMES #22
+     IN    price = 507
+     WORK  Price runs to Rs 891, up 75.7 per cent. In the SAME window, quarterly profit falls:
+     DATA  Mar-26 revenue 1,572 profit 204 | Jun-26 1,665 / 181 | Sep-26 1,699 / 171          [C]
+     OUT   price = 891 (+75.7%) ; profit = -16.2% across two quarters ; revenue = +8.1%
+     ASSERT reported harvests explain the price move                        -> FAILS. They fall.
+     UNVERIF no act of lifting this price is shown. A rise against falling harvests is a fact
+            without an author. Do not assert one.
+
+#24  LINE 2026-09-04    CALL  block_exit(P. R. McGoldrick)          CALLER #23 · RESUMES #19
+     IN    McGoldrick.holding = 1.13% unchanged since Mar-2024 (nine quarters)
+     WORK  ** BOTH SIDES NAMED IN ONE RECORD. ** Buy side and sell side tie to a single slip.
+     CASH  Kotak Mahindra Mutual Fund      7,80,000 @ 785  =  Rs  61.23 cr
+           ICICI Prudential Mutual Fund    6,00,000 @ 785  =  Rs  47.10 cr
+           360 One Asset Management        4,00,000 @ 785  =  Rs  31.40 cr
+           Carnelian Asset Management      3,20,000 @ 785  =  Rs  25.12 cr
+           ----------------------------------------------------------------
+           SUM BOUGHT                     21,00,000          Rs 164.85 cr
+           McGoldrick SOLD                21,00,000 @ 785  =  Rs 164.85 cr                    [C]
+     ASSERT buy_side == sell_side                                  -> HOLDS, difference 0 slips
+     OUT   McGoldrick.holding = 0.61%  -> falls below 1%, vanishes from a >=1% register
+     WORK  WHY A BLOCK AND NOT OPEN TRADING: push 21 lakh slips into a market and the price
+           falls while you sell — a seller pays for his own exit. Hand them to one buyer at a
+           price agreed beforehand and the price does not move. The only buyers large enough
+           are houses that MUST deploy money villagers send in monthly. Monthly savings are not
+           incidental to this frame. They are what makes it executable.
+     UNVERIF his cost basis is UNKNOWN. He managed this company, he did not found it. No gain
+            over cost can be computed. Claims that it was near nil are NOT supported.
+     UNVERIF those four houses may prove right. Rs 785 could look cheap in ten years.
+
+#25  LINE 2026-09-30    READ  register()                            CALLER #24 · RESUMES #19
+     OUT   promoter = 55.17% (55.39% at Dec-2023 — moved little; NOT a family selling down)
+           domestic funds = 5.55%  (2.50% at Dec-2023)   <- villagers' monthly money, rising
+           one fund scheme = 2.00% (1.51% a quarter earlier)
+           foreign = 6.59% (2.02%) ; McGoldrick = absent
+           count(slip_holders) = 11,88,825  <- DOWN 2,22,210 from peak at #19                 [C]
+
+#26  LINE 2026-11-03    CALL  mark_to_market()                      CALLER #24 · RESUMES #11
+     OUT   price = Rs 648
+     RETURN per-door outcome on one slip:
+           TPG @402 (#06) .................. +61.2%   exited at 1,014 / 673 / 749
+           allotted @500 (#10) ............. +29.6%   = 9.27% a year over 2.93 yrs
+                                                      vs a 10%/yr floor of Rs 661 -> SHORT Rs 13
+           listing open @1,200 (#11) ....... -46.0%
+           listing high @1,400 (#11) ....... -53.7%
+           funds @785 (#24) ................ -17.5%   = Rs 28.77 cr on that block
+
+================================================================================================
+RETURN — total cash that left public hands into sellers' hands
+
+     2023-11-24  IPO offer-for-sale    Tata Motors + Alpha TC + TCGF      Rs 3,042.50 cr
+     2024-08-23  block                 Alpha TC Holdings                  Rs 1,004.89 cr
+     2024-08-27  block                 TPG Rise Climate                   Rs 1,229.93 cr
+     2025-04-29  block                 TPG Rise Climate                   Rs 1,067.63 cr
+     2025-06-04  block                 TPG Rise Climate                   Rs   637.89 cr
+     2026-09-04  block                 P. R. McGoldrick                   Rs   164.85 cr
+     --------------------------------------------------------------------------------
+                                                                   TOTAL  Rs 7,147.69 cr
+
+     ASSERT  sum(company.account_delta) over every frame above        -> Rs 0.00 cr
+     The business received nothing at any step. Every rupee moved between holders.
+
+================================================================================================
+WHAT THIS TRACE DOES NOT ESTABLISH — read before using any frame
+
+  1. No frame shows an act of lifting a price. #23 is a fact without an author.
+  2. #24 shows a transfer, not a motive. Fund managers chose to buy and may be right.
+  3. McGoldrick's cost basis is unknown. #24 cannot be turned into a gain figure.
+  4. #02 is excluded. It is an unconcluded tribunal and no frame below depends on it.
+  5. The NHTSA review concerns Lane Keep Assist, a DIFFERENT system from the chassis and
+     suspension components described in that report. They are not the same thing.
+  6. #20 carries a counter-fact: cash generation is strong. A trace that reported only what
+     suited its author would be worth nothing.
+  7. Figures come from a data service compiling exchange filings and from press reports. The
+     FY26 annual report sits behind a server refusing requests. Nothing here was read from a
+     filing first-hand.
+
+Research, not advice on where to put money. No target prices, no recommendations, no holding
+in anything named. Nothing alleges wrongdoing by any person or company, and no claim is made
+about what anybody intended.
